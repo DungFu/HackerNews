@@ -252,6 +252,12 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                 holderComment.mCommentText.setText("");
                 holderComment.mView.setVisibility(View.GONE);
                 holderComment.mView.setOnClickListener(null);
+                ViewGroup.LayoutParams layoutParams = holderComment.mView.getLayoutParams();
+                if (layoutParams instanceof ViewGroup.MarginLayoutParams) {
+                    ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams) layoutParams;
+                    p.setMargins(0, 0, 0, 0);
+                    holderComment.mView.requestLayout();
+                }
             }
         }
     }
