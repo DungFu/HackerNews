@@ -3,6 +3,7 @@ package com.fmeyer.hackernews;
 import android.graphics.PorterDuff;
 import android.support.v7.widget.RecyclerView;
 import android.text.Html;
+import android.text.format.DateUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -187,7 +188,9 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                         String.format(
                                 holderStory.mView.getResources().getString(R.string.post_subtitle),
                                 Integer.toString(mMainStory.getScore()),
-                                mMainStory.getBy()));
+                                mMainStory.getBy(),
+                                DateUtils.getRelativeTimeSpanString(
+                                        (long) mMainStory.getTime() * (long) 1000)));
                 holderStory.mView.setBackgroundResource(R.color.white);
                 holderStory.mCommentsImageView.getDrawable().setColorFilter(
                         holderStory.mView.getResources().getColor(R.color.mediumGrey),
@@ -216,7 +219,13 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             if (itemWrapper != null && itemWrapper.getItem() != null) {
                 item = itemWrapper.getItem();
                 holderComment.mItem = item;
-                holderComment.mAuthor.setText(item.getBy());
+                holderComment.mAuthorTimeText.setText(item.getBy());
+                holderComment.mAuthorTimeText.setText(
+                        String.format(
+                                holderComment.mView.getResources().getString(R.string.comment_author_time),
+                                item.getBy(),
+                                DateUtils.getRelativeTimeSpanString(
+                                        (long) item.getTime() * (long) 1000)));
                 holderComment.mCommentText.setText(Utils.trim(Html.fromHtml(item.getText())));
                 ViewGroup.LayoutParams layoutParams = holderComment.mView.getLayoutParams();
                 if (layoutParams instanceof ViewGroup.MarginLayoutParams) {
@@ -239,7 +248,7 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                 });
             } else {
                 holderComment.mItem = null;
-                holderComment.mAuthor.setText("");
+                holderComment.mAuthorTimeText.setText("");
                 holderComment.mCommentText.setText("");
                 holderComment.mView.setVisibility(View.GONE);
                 holderComment.mView.setOnClickListener(null);
@@ -274,14 +283,14 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
 
     public class ViewHolderComment extends RecyclerView.ViewHolder {
         public final View mView;
-        public final TextView mAuthor;
+        public final TextView mAuthorTimeText;
         public final TextView mCommentText;
         public Item mItem;
 
         public ViewHolderComment(View view) {
             super(view);
             mView = view;
-            mAuthor = (TextView) view.findViewById(R.id.author);
+            mAuthorTimeText = (TextView) view.findViewById(R.id.author_time);
             mCommentText = (TextView) view.findViewById(R.id.comment_text);
         }
     }

@@ -2,6 +2,7 @@ package com.fmeyer.hackernews;
 
 import android.graphics.PorterDuff;
 import android.support.v7.widget.RecyclerView;
+import android.text.format.DateUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -69,7 +70,9 @@ public class StoriesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
                     String.format(
                             holderStory.mView.getResources().getString(R.string.post_subtitle),
                             Integer.toString(item.getScore()),
-                            item.getBy()));
+                            item.getBy(),
+                            DateUtils.getRelativeTimeSpanString(
+                                    (long) item.getTime() * (long) 1000)));
             holderStory.mCommentsImageView.getDrawable().setColorFilter(
                     holderStory.mView.getResources().getColor(R.color.mediumGrey),
                     PorterDuff.Mode.SRC_ATOP);
