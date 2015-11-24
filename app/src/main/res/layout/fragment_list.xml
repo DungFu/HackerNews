@@ -19,7 +19,6 @@
         tools:listitem="@layout/fragment_stories"
         app:layout_behavior="@string/appbar_scrolling_view_behavior"
         android:clipToPadding="false"
-        android:background="@color/darkGrey"
         />
 
 </android.support.v4.widget.SwipeRefreshLayout>

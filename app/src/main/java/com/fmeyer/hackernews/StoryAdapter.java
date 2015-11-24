@@ -1,10 +1,14 @@
 package com.fmeyer.hackernews;
 
+import android.graphics.PorterDuff;
 import android.support.v7.widget.RecyclerView;
 import android.text.Html;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -40,10 +44,82 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
 
     public void addComment(ItemCommentWrapper itemCommentWrapper) {
         mValues.add(itemCommentWrapper);
+        int position = getPositionForWrapper(itemCommentWrapper);
+        notifyItemRangeInserted(
+                (mMainStory != null ? 1 : 0) + position,
+                1 + itemCommentWrapper.getDescendants());
+    }
+
+    public void removeComment(ItemCommentWrapper itemCommentWrapper) {
+        int position = getPositionForWrapper(itemCommentWrapper);
+        int size = itemCommentWrapper.getDescendants();
+        if (position != -1) {
+            mValues.remove(itemCommentWrapper);
+            notifyItemRangeRemoved(
+                    (mMainStory != null ? 1 : 0) + position,
+                    1 + size);
+        }
+    }
+
+    public int getPositionForWrapper(ItemCommentWrapper itemCommentWrapper) {
+        int retVal = -1;
+        ItemCommentWrapper parent = itemCommentWrapper.getParent();
+        if (parent != null) {
+            int index = parent.getKids().indexOf(itemCommentWrapper);
+            if (index != -1) {
+                int progress = 0;
+                for (int i = 0; i < parent.getKids().size(); i++) {
+                    if (itemCommentWrapper == parent.getKids().get(i)) {
+                        break;
+                    } else {
+                        progress += 1 + parent.getKids().get(i).getDescendants();
+                    }
+                }
+                retVal = 1 + progress + getPositionForWrapper(parent);
+            } else {
+                Log.e(StoryAdapter.class.getName(), "Kid is not in parent kid list!");
+            }
+        } else {
+            int progress = 0;
+            for (int i = 0; i < mValues.size(); i++) {
+                if (itemCommentWrapper == mValues.get(i)) {
+                    retVal = progress;
+                    break;
+                } else {
+                    progress += 1 + mValues.get(i).getDescendants();
+                }
+            }
+        }
+        return retVal;
+    }
+
+    public void notifyCommentAdd(int position, int size) {
+        if (size > 1) {
+            notifyItemRangeInserted(
+                    (mMainStory != null ? 1 : 0) + position,
+                    size);
+        } else {
+            notifyItemInserted((mMainStory != null ? 1 : 0) + position);
+        }
+    }
+
+    public void notifyCommentRemove(int position, int size) {
+        if (size > 1) {
+            notifyItemRangeRemoved(
+                    (mMainStory != null ? 1 : 0) + position,
+                    size);
+        } else {
+            notifyItemRemoved((mMainStory != null ? 1 : 0) + position);
+        }
+    }
+
+    public void notifyCommentChange(int position) {
+        notifyItemChanged((mMainStory != null ? 1 : 0) + position);
     }
 
     public void clear() {
         mValues.clear();
+        mMainStory = null;
         notifyDataSetChanged();
     }
 
@@ -105,10 +181,17 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             final ViewHolderStory holderStory = (ViewHolderStory) holder;
             if (mMainStory != null) {
                 holderStory.mItem = mMainStory;
-                holderStory.mScoreCommentsView.setText(
-                        Integer.toString(mMainStory.getScore()) + "\n" + Integer.toString(mMainStory.getDescendants()));
+                holderStory.mCommentsView.setText(Integer.toString(mMainStory.getDescendants()));
                 holderStory.mTitleView.setText(mMainStory.getTitle());
+                holderStory.mSubtitleView.setText(
+                        String.format(
+                                holderStory.mView.getResources().getString(R.string.post_subtitle),
+                                Integer.toString(mMainStory.getScore()),
+                                mMainStory.getBy()));
                 holderStory.mView.setBackgroundResource(R.color.white);
+                holderStory.mCommentsImageView.getDrawable().setColorFilter(
+                        holderStory.mView.getResources().getColor(R.color.mediumGrey),
+                        PorterDuff.Mode.SRC_ATOP);
 
                 holderStory.mView.setOnClickListener(new View.OnClickListener() {
                     @Override
@@ -122,8 +205,9 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                 });
             } else {
                 holderStory.mItem = null;
-                holderStory.mScoreCommentsView.setText("");
+                holderStory.mCommentsView.setText("");
                 holderStory.mTitleView.setText("");
+                holderStory.mSubtitleView.setText("");
             }
         } else if (holder instanceof ViewHolderComment) {
             final ViewHolderComment holderComment = (ViewHolderComment) holder;
@@ -132,16 +216,8 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             if (itemWrapper != null && itemWrapper.getItem() != null) {
                 item = itemWrapper.getItem();
                 holderComment.mItem = item;
-
-                holderComment.mCommentText.setText(
-                        item.isDeleted() || item.isDead() ?
-                                Html.fromHtml("<i>deleted</i>") :
-                                Html.fromHtml("<span>" + item.getText() + "</span>"));
                 holderComment.mAuthor.setText(item.getBy());
-                holderComment.mAuthor.setVisibility(
-                        item.isDeleted() || item.isDead() ?
-                                View.GONE :
-                                View.VISIBLE);
+                holderComment.mCommentText.setText(Utils.trim(Html.fromHtml(item.getText())));
                 ViewGroup.LayoutParams layoutParams = holderComment.mView.getLayoutParams();
                 if (layoutParams instanceof ViewGroup.MarginLayoutParams) {
                     ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams) layoutParams;
@@ -152,28 +228,21 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                             0);
                     holderComment.mView.requestLayout();
                 }
-                holderComment.mView.setPadding(20 * itemWrapper.getDepth(), 0, 0, 0);
                 holderComment.mView.setVisibility(View.VISIBLE);
-                if ((position - 1) % 2 == 1) {
-                    holderComment.mView.setBackgroundResource(R.color.lightGrey);
-                } else {
-                    holderComment.mView.setBackgroundResource(R.color.white);
-                }
-
                 holderComment.mView.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
                         if (null != mListener) {
-                            // Notify the active callbacks interface (the activity, if the
-                            // fragment is attached to one) that an item has been selected.
                             mListener.onListFragmentInteraction(holderComment.mItem);
                         }
                     }
                 });
             } else {
                 holderComment.mItem = null;
+                holderComment.mAuthor.setText("");
                 holderComment.mCommentText.setText("");
                 holderComment.mView.setVisibility(View.GONE);
+                holderComment.mView.setOnClickListener(null);
             }
         }
     }
@@ -185,40 +254,35 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
 
     public class ViewHolderStory extends RecyclerView.ViewHolder {
         public final View mView;
-        public final TextView mScoreCommentsView;
+        public final LinearLayout mCommentsContainer;
+        public final ImageView mCommentsImageView;
+        public final TextView mCommentsView;
         public final TextView mTitleView;
+        public final TextView mSubtitleView;
         public Item mItem;
 
         public ViewHolderStory(View view) {
             super(view);
             mView = view;
-            mScoreCommentsView = (TextView) view.findViewById(R.id.score_comments);
+            mCommentsContainer = (LinearLayout) view.findViewById(R.id.comments_container);
+            mCommentsImageView = (ImageView) view.findViewById(R.id.comments_image);
+            mCommentsView = (TextView) view.findViewById(R.id.comments);
             mTitleView = (TextView) view.findViewById(R.id.title);
-        }
-    }
-
-    public class ViewHolderLoading extends RecyclerView.ViewHolder {
-        public final View mView;
-        public final ProgressBar mProgressBar;
-
-        public ViewHolderLoading(View view) {
-            super(view);
-            mView = view;
-            mProgressBar = (ProgressBar) view.findViewById(R.id.progress_bar);
+            mSubtitleView = (TextView) view.findViewById(R.id.subtitle);
         }
     }
 
     public class ViewHolderComment extends RecyclerView.ViewHolder {
         public final View mView;
-        public final TextView mCommentText;
         public final TextView mAuthor;
+        public final TextView mCommentText;
         public Item mItem;
 
         public ViewHolderComment(View view) {
             super(view);
             mView = view;
-            mCommentText = (TextView) view.findViewById(R.id.comment_text);
             mAuthor = (TextView) view.findViewById(R.id.author);
+            mCommentText = (TextView) view.findViewById(R.id.comment_text);
         }
     }
 }

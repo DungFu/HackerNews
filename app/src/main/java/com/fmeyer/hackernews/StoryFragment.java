@@ -18,7 +18,8 @@ import com.firebase.client.ValueEventListener;
 import com.fmeyer.hackernews.models.Item;
 import com.fmeyer.hackernews.models.ItemCommentWrapper;
 
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * A fragment representing a list of Items.
@@ -36,7 +37,9 @@ public class StoryFragment extends Fragment {
     private SwipeRefreshLayout mSwipeContainer;
     private LinearLayoutManager mLayoutManager;
     private StoryAdapter mAdapter;
-    private List<ItemCommentWrapper> mComments;
+    private Runnable mRefreshingRunnable;
+
+    private final Set<ItemCommentWrapper> mLoadingComments = new HashSet<>();
 
     /**
      * Mandatory empty constructor for the fragment manager to instantiate the
@@ -70,6 +73,9 @@ public class StoryFragment extends Fragment {
         mRecyclerView = (RecyclerView) view.findViewById(R.id.list);
         mSwipeContainer = (SwipeRefreshLayout) view.findViewById(R.id.swipe_container);
 
+        mRecyclerView.setBackgroundResource(R.color.mediumGrey);
+        mRecyclerView.addItemDecoration(new DividerItemDecoration(getActivity()));
+
         // Set the adapter
         Context context = mRecyclerView.getContext();
         mLayoutManager = new LinearLayoutManager(context);
@@ -79,16 +85,55 @@ public class StoryFragment extends Fragment {
 
         mAdapter.setMainStory(mStoryItem);
         fetchComments(null, mStoryItem, 0);
+        if (mStoryItem.getDescendants() > 0) {
+            setRefreshingState(true);
+        }
 
         mSwipeContainer.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
                 mAdapter.clear();
-                fetchComments(null, mStoryItem, 0);
+                fetchStory(Integer.toString(mStoryItem.getId()));
             }
         });
 
         return view;
+    }
+
+    private void setRefreshingState(final boolean isRefreshing) {
+        if (mRefreshingRunnable != null) {
+            mSwipeContainer.removeCallbacks(mRefreshingRunnable);
+            mRefreshingRunnable = null;
+        }
+        mRefreshingRunnable = new Runnable() {
+            @Override
+            public void run() {
+                mSwipeContainer.setRefreshing(isRefreshing);
+                mRefreshingRunnable = null;
+            }
+        };
+        mSwipeContainer.post(mRefreshingRunnable);
+    }
+
+    private void fetchStory(String id) {
+        Firebase ref = new Firebase("https://hacker-news.firebaseio.com/v0/");
+        ref.child("item").child(id).addListenerForSingleValueEvent(
+                new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+                        Item item = dataSnapshot.getValue(Item.class);
+                        mStoryItem = item;
+                        mAdapter.setMainStory(mStoryItem);
+                        if (mStoryItem.getDescendants() <= 0) {
+                            setRefreshingState(false);
+                        }
+                        fetchComments(null, mStoryItem, 0);
+                    }
+
+                    @Override
+                    public void onCancelled(FirebaseError firebaseError) {
+                    }
+                });
     }
 
     private void fetchComments(
@@ -100,27 +145,48 @@ public class StoryFragment extends Fragment {
             return;
         }
         for (int i = 0; i < item.getKids().size(); i++) {
+            final String itemId = Integer.toString(item.getKids().get(i));
             final Query commentQuery = ref
                     .child("item")
-                    .child(Integer.toString(item.getKids().get(i)));
-            final ItemCommentWrapper itemCommentWrapper = new ItemCommentWrapper();
+                    .child(itemId);
+            final ItemCommentWrapper itemCommentWrapper =
+                    new ItemCommentWrapper(parentWrapper, depth);
             if (parentWrapper == null) {
-                mSwipeContainer.setRefreshing(false);
                 mAdapter.addComment(itemCommentWrapper);
             } else {
                 parentWrapper.addKid(itemCommentWrapper);
+                int descendants = itemCommentWrapper.getDescendants();
+                mAdapter.notifyCommentAdd(
+                        mAdapter.getPositionForWrapper(itemCommentWrapper),
+                        1 + descendants);
             }
+            mLoadingComments.add(itemCommentWrapper);
             commentQuery.addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(DataSnapshot dataSnapshot) {
                     Item item = dataSnapshot.getValue(Item.class);
-                    itemCommentWrapper.setItem(item, depth);
-                    if (item.getKids() == null || item.getKids().isEmpty()) {
-//                        mAdapter.notifyDataSetChanged();
+                    if (item != null && !item.isDead() && !item.isDeleted()) {
+                        itemCommentWrapper.setItem(item);
+                        mAdapter.notifyCommentChange(
+                                mAdapter.getPositionForWrapper(itemCommentWrapper));
+                        if (item.getKids() != null && !item.getKids().isEmpty()) {
+                            fetchComments(itemCommentWrapper, item, depth + 1);
+                        }
                     } else {
-                        fetchComments(itemCommentWrapper, item, depth + 1);
+                        if (parentWrapper == null) {
+                            mAdapter.removeComment(itemCommentWrapper);
+                        } else {
+                            int removePosition = mAdapter.getPositionForWrapper(itemCommentWrapper);
+                            int descendants = itemCommentWrapper.getDescendants();
+                            parentWrapper.removeKid(itemCommentWrapper);
+                            mAdapter.notifyCommentRemove(removePosition, 1 + descendants);
+                        }
+
                     }
-                    mAdapter.notifyDataSetChanged();
+                    mLoadingComments.remove(itemCommentWrapper);
+                    if (mLoadingComments.isEmpty()) {
+                        setRefreshingState(false);
+                    }
                 }
 
                 @Override
@@ -159,7 +225,6 @@ public class StoryFragment extends Fragment {
      * >Communicating with Other Fragments</a> for more information.
      */
     public interface OnListFragmentInteractionListener {
-        // TODO: Update argument type and name
         void onListFragmentInteraction(Item item);
     }
 }

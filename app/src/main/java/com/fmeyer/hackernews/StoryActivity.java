@@ -29,6 +29,10 @@ public class StoryActivity extends AppCompatActivity implements StoryFragment.On
         FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
         ft.replace(R.id.content_story_placeholder, StoryFragment.newInstance(mStoryItem));
         ft.commit();
+
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setTitle(getString(R.string.comments_titlebar));
+        }
     }
 
     /**

@@ -4,22 +4,67 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
+    android:background="?android:attr/selectableItemBackground"
     >
 
-    <TextView
-        android:id="@+id/score_comments"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_margin="@dimen/text_margin"
-        android:textAppearance="?attr/textAppearanceListItem"
-        />
+        android:layout_weight="1"
+        android:layout_marginTop="@dimen/text_margin"
+        android:layout_marginBottom="@dimen/text_margin"
+        android:layout_marginLeft="@dimen/text_margin"
+        android:layout_marginStart="@dimen/text_margin"
+        android:orientation="vertical"
+        android:gravity="center_vertical"
+        >
 
-    <TextView
-        android:id="@+id/title"
+        <TextView
+            android:id="@+id/title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceListItem"
+            android:maxLines="2"
+            android:ellipsize="end"
+            />
+
+        <TextView
+            android:id="@+id/subtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceListItem"
+            android:textSize="12sp"
+            android:textColor="@color/mediumGrey"
+            />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/comments_container"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_margin="@dimen/text_margin"
-        android:textAppearance="?attr/textAppearanceListItem"
-        />
+        android:layout_gravity="center_vertical"
+        android:orientation="vertical"
+        android:padding="@dimen/text_margin"
+        android:gravity="center"
+        >
+
+        <ImageView
+            android:id="@+id/comments_image"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_comments"
+            />
+
+        <TextView
+            android:id="@+id/comments"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?attr/textAppearanceListItemSmall"
+            android:textSize="12sp"
+            android:textColor="@color/mediumGrey"
+            />
+
+    </LinearLayout>
 
 </LinearLayout>

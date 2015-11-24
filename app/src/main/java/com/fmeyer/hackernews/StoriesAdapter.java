@@ -1,9 +1,12 @@
 package com.fmeyer.hackernews;
 
+import android.graphics.PorterDuff;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -20,9 +23,6 @@ import java.util.List;
  */
 public class StoriesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
-    private static final int STORY_VIEW_TYPE = 0;
-    private static final int LOADING_VIEW_TYPE = 1;
-
     private final List<ItemWrapper> mValues = new ArrayList<>();
     private final OnListFragmentInteractionListener mListener;
 
@@ -30,11 +30,17 @@ public class StoriesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
         mListener = listener;
     }
 
-    public int addStory(ItemWrapper itemWrapper) {
+    public void addStory(ItemWrapper itemWrapper) {
+        int count = mValues.size();
         mValues.add(itemWrapper);
-        int position = mValues.size() - 1;
-        notifyItemChanged(position);
-        return position;
+        notifyItemInserted(count);
+    }
+
+    public void notifyUpdateStory(ItemWrapper itemWrapper) {
+        int index = mValues.indexOf(itemWrapper);
+        if (index != -1) {
+            notifyItemChanged(index);
+        }
     }
 
     public void clear() {
@@ -43,94 +49,84 @@ public class StoriesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
     }
 
     @Override
-    public int getItemViewType(int position) {
-        if (position == mValues.size()) {
-            return LOADING_VIEW_TYPE;
-        } else {
-            return STORY_VIEW_TYPE;
-        }
-    }
-
-    @Override
     public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        switch (viewType) {
-            case LOADING_VIEW_TYPE:
-                View view = LayoutInflater.from(parent.getContext())
-                        .inflate(R.layout.fragment_loading, parent, false);
-                return new ViewHolderLoading(view);
-            case STORY_VIEW_TYPE:
-            default:
-                View viewStory = LayoutInflater.from(parent.getContext())
-                        .inflate(R.layout.fragment_stories, parent, false);
-                return new ViewHolderStory(viewStory);
-        }
+        View viewStory = LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.fragment_stories, parent, false);
+        return new ViewHolderStory(viewStory);
     }
 
     @Override
     public void onBindViewHolder(final RecyclerView.ViewHolder holder, int position) {
-        if (holder instanceof  ViewHolderStory) {
-            final ViewHolderStory holderStory = (ViewHolderStory) holder;
-            ItemWrapper itemWrapper = mValues.get(position);
-            Item item;
-            if (itemWrapper.getItem() != null) {
-                item = itemWrapper.getItem();
-                holderStory.mItem = item;
-                holderStory.mScoreCommentsView.setText(
-                        Integer.toString(item.getScore()) + "\n" + Integer.toString(item.getDescendants()));
-                holderStory.mTitleView.setText(item.getTitle());
-                if (position % 2 == 1) {
-                    holderStory.mView.setBackgroundResource(R.color.lightGrey);
-                } else {
-                    holderStory.mView.setBackgroundResource(R.color.white);
-                }
-
-                holderStory.mView.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        if (null != mListener) {
-                            // Notify the active callbacks interface (the activity, if the
-                            // fragment is attached to one) that an item has been selected.
-                            mListener.onListFragmentInteraction(holderStory.mItem);
-                        }
+        final ViewHolderStory holderStory = (ViewHolderStory) holder;
+        ItemWrapper itemWrapper = mValues.get(position);
+        Item item;
+        if (itemWrapper.getItem() != null) {
+            item = itemWrapper.getItem();
+            holderStory.mItem = item;
+            holderStory.mCommentsView.setText(Integer.toString(item.getDescendants()));
+            holderStory.mTitleView.setText(item.getTitle());
+            holderStory.mSubtitleView.setText(
+                    String.format(
+                            holderStory.mView.getResources().getString(R.string.post_subtitle),
+                            Integer.toString(item.getScore()),
+                            item.getBy()));
+            holderStory.mCommentsImageView.getDrawable().setColorFilter(
+                    holderStory.mView.getResources().getColor(R.color.mediumGrey),
+                    PorterDuff.Mode.SRC_ATOP);
+            holderStory.mView.setVisibility(View.VISIBLE);
+            holderStory.mView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (null != mListener) {
+                        mListener.onListFragmentInteraction(
+                                holderStory.mItem,
+                                StoriesFragment.CLICK_INTERACTION_TYPE.URL);
                     }
-                });
-            } else {
-                holderStory.mItem = null;
-                holderStory.mScoreCommentsView.setText("");
-                holderStory.mTitleView.setText("");
-            }
-        } else if (holder instanceof  ViewHolderLoading) {
-            // do nothing
+                }
+            });
+            holderStory.mCommentsContainer.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (null != mListener) {
+                        mListener.onListFragmentInteraction(
+                                holderStory.mItem,
+                                StoriesFragment.CLICK_INTERACTION_TYPE.COMMENTS);
+                    }
+                }
+            });
+        } else {
+            holderStory.mItem = null;
+            holderStory.mCommentsView.setText("");
+            holderStory.mTitleView.setText("");
+            holderStory.mSubtitleView.setText("");
+            holderStory.mView.setVisibility(View.GONE);
+            holderStory.mView.setOnClickListener(null);
+            holderStory.mCommentsContainer.setOnClickListener(null);
         }
     }
 
     @Override
     public int getItemCount() {
-        return mValues.size() + 1;
+        return mValues.size();
     }
 
     public class ViewHolderStory extends RecyclerView.ViewHolder {
         public final View mView;
-        public final TextView mScoreCommentsView;
+        public final LinearLayout mCommentsContainer;
+        public final ImageView mCommentsImageView;
+        public final TextView mCommentsView;
         public final TextView mTitleView;
+        public final TextView mSubtitleView;
         public Item mItem;
 
         public ViewHolderStory(View view) {
             super(view);
             mView = view;
-            mScoreCommentsView = (TextView) view.findViewById(R.id.score_comments);
+            mCommentsContainer = (LinearLayout) view.findViewById(R.id.comments_container);
+            mCommentsImageView = (ImageView) view.findViewById(R.id.comments_image);
+            mCommentsView = (TextView) view.findViewById(R.id.comments);
             mTitleView = (TextView) view.findViewById(R.id.title);
-        }
-    }
-
-    public class ViewHolderLoading extends RecyclerView.ViewHolder {
-        public final View mView;
-        public final ProgressBar mProgressBar;
-
-        public ViewHolderLoading(View view) {
-            super(view);
-            mView = view;
-            mProgressBar = (ProgressBar) view.findViewById(R.id.progress_bar);
+            mSubtitleView = (TextView) view.findViewById(R.id.subtitle);
         }
     }
 }

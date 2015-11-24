@@ -7,6 +7,9 @@
     <string name="action_settings">Settings</string>
     <string name="title_activity_settings">Settings</string>
 
+    <string name="comments_titlebar">Comments</string>
+    <string name="post_subtitle">%1$s points by %2$s</string>
+
     <!-- Strings related to Settings -->
 
     <!-- Example General settings -->

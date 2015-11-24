@@ -18,6 +18,9 @@ import com.firebase.client.ValueEventListener;
 import com.fmeyer.hackernews.models.Item;
 import com.fmeyer.hackernews.models.ItemWrapper;
 
+import java.util.HashSet;
+import java.util.Set;
+
 /**
  * A fragment representing a list of Items.
  * <p/>
@@ -25,6 +28,11 @@ import com.fmeyer.hackernews.models.ItemWrapper;
  * interface.
  */
 public class StoriesFragment extends Fragment {
+
+    public static enum CLICK_INTERACTION_TYPE {
+        URL,
+        COMMENTS
+    }
 
     private static final String ARG_FILTER_TYPE = "filter_type";
 
@@ -37,7 +45,9 @@ public class StoriesFragment extends Fragment {
     private StoriesAdapter mAdapter;
     private int mPage = 0;
     private boolean mHasMorePages = true;
-    private int mOpenRequests = 0;
+    private Runnable mRefreshingRunnable;
+
+    private final Set<ItemWrapper> mLoadingStories = new HashSet<>();
 
     /**
      * Mandatory empty constructor for the fragment manager to instantiate the
@@ -72,6 +82,7 @@ public class StoriesFragment extends Fragment {
         mSwipeContainer = (SwipeRefreshLayout) view.findViewById(R.id.swipe_container);
 
         mRecyclerView.setBackgroundResource(R.color.white);
+        mRecyclerView.addItemDecoration(new DividerItemDecoration(getActivity()));
 
         // Set the adapter
         Context context = mRecyclerView.getContext();
@@ -82,6 +93,7 @@ public class StoriesFragment extends Fragment {
 
         mRef = new Firebase("https://hacker-news.firebaseio.com/v0/");
         fetchStories(10, mPage);
+        setRefreshingState(true);
 
         mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
@@ -109,6 +121,21 @@ public class StoriesFragment extends Fragment {
         return view;
     }
 
+    private void setRefreshingState(final boolean isRefreshing) {
+        if (mRefreshingRunnable != null) {
+            mSwipeContainer.removeCallbacks(mRefreshingRunnable);
+            mRefreshingRunnable = null;
+        }
+        mRefreshingRunnable = new Runnable() {
+            @Override
+            public void run() {
+                mSwipeContainer.setRefreshing(isRefreshing);
+                mRefreshingRunnable = null;
+            }
+        };
+        mSwipeContainer.post(mRefreshingRunnable);
+    }
+
     private void fetchStories(int pageSize, int pageNum) {
         Firebase ref = new Firebase("https://hacker-news.firebaseio.com/v0/");
         final Query topStoriesQuery = ref
@@ -121,21 +148,21 @@ public class StoriesFragment extends Fragment {
                 boolean hasData = false;
                 for (DataSnapshot child : dataSnapshot.getChildren()) {
                     hasData = true;
-                    mOpenRequests++;
                     Integer itemId = child.getValue(Integer.class);
                     final ItemWrapper itemWrapper = new ItemWrapper();
-                    final int position = mAdapter.addStory(itemWrapper);
+                    mAdapter.addStory(itemWrapper);
+                    mLoadingStories.add(itemWrapper);
                     mRef.child("item").child(itemId.toString()).addListenerForSingleValueEvent(
                             new ValueEventListener() {
                                 @Override
                                 public void onDataChange(DataSnapshot dataSnapshot) {
-                                    mOpenRequests--;
-                                    if (mOpenRequests <= 0 && mSwipeContainer.isRefreshing()) {
-                                        mSwipeContainer.setRefreshing(false);
-                                    }
                                     Item item = dataSnapshot.getValue(Item.class);
                                     itemWrapper.setItem(item);
-                                    mAdapter.notifyItemChanged(position);
+                                    mAdapter.notifyUpdateStory(itemWrapper);
+                                    mLoadingStories.remove(itemWrapper);
+                                    if (mLoadingStories.isEmpty()) {
+                                        setRefreshingState(false);
+                                    }
                                 }
 
                                 @Override
@@ -184,6 +211,6 @@ public class StoriesFragment extends Fragment {
      */
     public interface OnListFragmentInteractionListener {
         // TODO: Update argument type and name
-        void onListFragmentInteraction(Item item);
+        void onListFragmentInteraction(Item item, CLICK_INTERACTION_TYPE interactionType);
     }
 }

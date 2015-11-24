@@ -1,6 +1,7 @@
 package com.fmeyer.hackernews;
 
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.FragmentTransaction;
 import android.support.design.widget.NavigationView;
@@ -9,6 +10,7 @@ import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 
@@ -120,12 +122,38 @@ public class MainActivity extends AppCompatActivity
         return true;
     }
 
-    @Override
-    public void onListFragmentInteraction(Item item) {
+    private void launchUrl(Item item) {
+        if (item != null && item.getUrl() != null) {
+            Uri uri = Uri.parse(item.getUrl());
+            Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+            startActivity(intent);
+        } else {
+            launchComments(item);
+        }
+    }
+
+    private void launchComments(Item item) {
         if (item != null) {
             Intent intent = new Intent(getBaseContext(), StoryActivity.class);
             intent.putExtra(Constants.EXTRA_STORY_ITEM, item);
             startActivity(intent);
+        }
+    }
+
+    @Override
+    public void onListFragmentInteraction(
+            Item item,
+            StoriesFragment.CLICK_INTERACTION_TYPE interactionType) {
+        switch (interactionType) {
+            case URL:
+                launchUrl(item);
+                break;
+            case COMMENTS:
+                launchComments(item);
+                break;
+            default:
+                Log.d(MainActivity.class.getName(), "Interaction type not valid or item is null");
+                break;
         }
     }
 }
