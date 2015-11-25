@@ -8,4 +8,6 @@
     <dimen name="fab_margin">16dp</dimen>
     <dimen name="text_margin">16dp</dimen>
     <dimen name="comment_indent">16dp</dimen>
+    <dimen name="subtitle_text_size">12sp</dimen>
+    <dimen name="comment_text_size">14sp</dimen>
 </resources>
