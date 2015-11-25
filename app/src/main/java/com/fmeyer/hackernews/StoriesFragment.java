@@ -3,9 +3,11 @@ package com.fmeyer.hackernews;
 import android.content.Context;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.support.v4.util.Pair;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -18,7 +20,9 @@ import com.firebase.client.ValueEventListener;
 import com.fmeyer.hackernews.models.Item;
 import com.fmeyer.hackernews.models.ItemWrapper;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -47,6 +51,7 @@ public class StoriesFragment extends Fragment {
     private boolean mHasMorePages = true;
     private Runnable mRefreshingRunnable;
 
+    private final Set<Pair<Firebase, ValueEventListener>> mValueEventsListeners = new HashSet<>();
     private final Set<ItemWrapper> mLoadingStories = new HashSet<>();
 
     /**
@@ -114,11 +119,29 @@ public class StoriesFragment extends Fragment {
                 mAdapter.clear();
                 mPage = 0;
                 mHasMorePages = true;
+                destroyEventListeners();
                 fetchStories(10, mPage);
             }
         });
 
         return view;
+    }
+
+    private void destroyEventListeners() {
+        removeEventListeners();
+        mValueEventsListeners.clear();
+    }
+
+    private void removeEventListeners() {
+        for (Pair<Firebase, ValueEventListener> pair : mValueEventsListeners) {
+            pair.first.removeEventListener(pair.second);
+        }
+    }
+
+    private void reAddEventListeners() {
+        for (Pair<Firebase, ValueEventListener> pair : mValueEventsListeners) {
+            pair.first.addValueEventListener(pair.second);
+        }
     }
 
     private void setRefreshingState(final boolean isRefreshing) {
@@ -137,8 +160,7 @@ public class StoriesFragment extends Fragment {
     }
 
     private void fetchStories(int pageSize, int pageNum) {
-        Firebase ref = new Firebase("https://hacker-news.firebaseio.com/v0/");
-        final Query topStoriesQuery = ref
+        final Query topStoriesQuery = mRef
                 .child(mFilterType)
                 .startAt(null, String.valueOf(pageSize*pageNum))
                 .limitToFirst(pageSize);
@@ -152,23 +174,33 @@ public class StoriesFragment extends Fragment {
                     final ItemWrapper itemWrapper = new ItemWrapper();
                     mAdapter.addStory(itemWrapper);
                     mLoadingStories.add(itemWrapper);
-                    mRef.child("item").child(itemId.toString()).addListenerForSingleValueEvent(
-                            new ValueEventListener() {
-                                @Override
-                                public void onDataChange(DataSnapshot dataSnapshot) {
-                                    Item item = dataSnapshot.getValue(Item.class);
-                                    itemWrapper.setItem(item);
-                                    mAdapter.notifyUpdateStory(itemWrapper);
-                                    mLoadingStories.remove(itemWrapper);
-                                    if (mLoadingStories.isEmpty()) {
-                                        setRefreshingState(false);
-                                    }
-                                }
+                    ValueEventListener listener = new ValueEventListener() {
+                        @Override
+                        public void onDataChange(DataSnapshot dataSnapshot) {
+                            Item item = dataSnapshot.getValue(Item.class);
+                            boolean shouldShow = itemWrapper.shouldShow();
+                            int beforePosition = mAdapter.getPositionForItemWrapper(itemWrapper);
+                            itemWrapper.setItem(item);
+                            if (!shouldShow && itemWrapper.shouldShow()) {
+                                mAdapter.notifyAddStory(itemWrapper);
+                            } else if (shouldShow && itemWrapper.shouldShow()) {
+                                mAdapter.notifyUpdateStory(itemWrapper);
+                            } else if (shouldShow && !itemWrapper.shouldShow()) {
+                                mAdapter.notifyRemoveStory(beforePosition);
+                            }
+                            mLoadingStories.remove(itemWrapper);
+                            if (mLoadingStories.isEmpty()) {
+                                setRefreshingState(false);
+                            }
+                        }
 
-                                @Override
-                                public void onCancelled(FirebaseError firebaseError) {
-                                }
-                            });
+                        @Override
+                        public void onCancelled(FirebaseError firebaseError) {
+                        }
+                    };
+                    Firebase ref = mRef.child("item").child(itemId.toString());
+                    ref.addValueEventListener(listener);
+                    mValueEventsListeners.add(Pair.create(ref, listener));
                 }
                 if (!hasData) {
                     mHasMorePages = false;
@@ -199,6 +231,24 @@ public class StoriesFragment extends Fragment {
         mListener = null;
     }
 
+    @Override
+    public void onPause() {
+        super.onPause();
+        removeEventListeners();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        reAddEventListeners();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        destroyEventListeners();
+    }
+
     /**
      * This interface must be implemented by activities that contain this
      * fragment to allow an interaction in this fragment to be communicated
@@ -210,7 +260,6 @@ public class StoriesFragment extends Fragment {
      * >Communicating with Other Fragments</a> for more information.
      */
     public interface OnListFragmentInteractionListener {
-        // TODO: Update argument type and name
         void onListFragmentInteraction(Item item, CLICK_INTERACTION_TYPE interactionType);
     }
 }

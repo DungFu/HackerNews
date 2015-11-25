@@ -1,10 +1,12 @@
 package com.fmeyer.hackernews;
 
 import android.graphics.PorterDuff;
+import android.support.annotation.Nullable;
 import android.support.v7.widget.RecyclerView;
 import android.text.Html;
 import android.text.format.DateUtils;
 import android.util.Log;
+import android.view.HapticFeedbackConstants;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -45,49 +47,43 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
 
     public void addComment(ItemCommentWrapper itemCommentWrapper) {
         mValues.add(itemCommentWrapper);
-        int position = getPositionForWrapper(itemCommentWrapper);
-        notifyItemRangeInserted(
-                (mMainStory != null ? 1 : 0) + position,
-                1 + itemCommentWrapper.getDescendants());
-    }
-
-    public void removeComment(ItemCommentWrapper itemCommentWrapper) {
-        int position = getPositionForWrapper(itemCommentWrapper);
-        int size = itemCommentWrapper.getDescendants();
-        if (position != -1) {
-            mValues.remove(itemCommentWrapper);
-            notifyItemRangeRemoved(
-                    (mMainStory != null ? 1 : 0) + position,
-                    1 + size);
-        }
     }
 
     public int getPositionForWrapper(ItemCommentWrapper itemCommentWrapper) {
         int retVal = -1;
-        ItemCommentWrapper parent = itemCommentWrapper.getParent();
-        if (parent != null) {
-            int index = parent.getKids().indexOf(itemCommentWrapper);
-            if (index != -1) {
-                int progress = 0;
-                for (int i = 0; i < parent.getKids().size(); i++) {
-                    if (itemCommentWrapper == parent.getKids().get(i)) {
-                        break;
+        if (itemCommentWrapper.shouldShow()) {
+            ItemCommentWrapper parent = itemCommentWrapper.getParent();
+            if (parent != null) {
+                if (parent.getKids() != null) {
+                    int index = parent.getKids().indexOf(itemCommentWrapper);
+                    if (index != -1) {
+                        int progress = 0;
+                        for (int i = 0; i < parent.getKids().size(); i++) {
+                            if (itemCommentWrapper == parent.getKids().get(i)) {
+                                break;
+                            } else {
+                                progress += parent.getKids().get(i).getSize();
+                            }
+                        }
+                        int position = getPositionForWrapper(parent);
+                        if (position != -1) {
+                            retVal = position + (parent.shouldShow() ? 1 : 0) + progress;
+                        } else {
+                            Log.e(StoryAdapter.class.getName(), "Position not found for item in getPositionForWrapper()");
+                        }
                     } else {
-                        progress += 1 + parent.getKids().get(i).getDescendants();
+                        Log.e(StoryAdapter.class.getName(), "Kid is not in parent kid list!");
                     }
                 }
-                retVal = 1 + progress + getPositionForWrapper(parent);
             } else {
-                Log.e(StoryAdapter.class.getName(), "Kid is not in parent kid list!");
-            }
-        } else {
-            int progress = 0;
-            for (int i = 0; i < mValues.size(); i++) {
-                if (itemCommentWrapper == mValues.get(i)) {
-                    retVal = progress;
-                    break;
-                } else {
-                    progress += 1 + mValues.get(i).getDescendants();
+                int progress = 0;
+                for (int i = 0; i < mValues.size(); i++) {
+                    if (itemCommentWrapper == mValues.get(i)) {
+                        retVal = progress;
+                        break;
+                    } else {
+                        progress += mValues.get(i).getSize();
+                    }
                 }
             }
         }
@@ -95,22 +91,18 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
     }
 
     public void notifyCommentAdd(int position, int size) {
-        if (size > 1) {
+        if (size > 0) {
             notifyItemRangeInserted(
                     (mMainStory != null ? 1 : 0) + position,
                     size);
-        } else {
-            notifyItemInserted((mMainStory != null ? 1 : 0) + position);
         }
     }
 
     public void notifyCommentRemove(int position, int size) {
-        if (size > 1) {
+        if (size > 0) {
             notifyItemRangeRemoved(
                     (mMainStory != null ? 1 : 0) + position,
                     size);
-        } else {
-            notifyItemRemoved((mMainStory != null ? 1 : 0) + position);
         }
     }
 
@@ -127,26 +119,38 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
     private int getValuesSize() {
         int size = 0;
         for (ItemCommentWrapper itemCommentWrapper : mValues) {
-            size += (1 + itemCommentWrapper.getDescendants());
+            size += itemCommentWrapper.getSize();
         }
         return size;
     }
 
-    private ItemCommentWrapper getValuesItem(int position) {
+    private @Nullable ItemCommentWrapper getValuesItem(int position) {
         return getValuesItemHelper(mValues, position);
     }
 
-    private ItemCommentWrapper getValuesItemHelper(List<ItemCommentWrapper> values, int position) {
+    private @Nullable ItemCommentWrapper getValuesItemHelper(
+            List<ItemCommentWrapper> values,
+            int position) {
         int progress = 0;
-        for (int i = 0; i < values.size(); i++) {
-            ItemCommentWrapper itemCommentWrapper = values.get(i);
-            int subDescendants = itemCommentWrapper.getDescendants();
-            if (position == progress) {
-                return itemCommentWrapper;
-            } else if (position >= progress + 1 && position < progress + 1 + subDescendants) {
-                return getValuesItemHelper(itemCommentWrapper.getKids(), position - (progress + 1));
-            } else {
-                progress += (1 + subDescendants);
+        if (values != null) {
+            for (int i = 0; i < values.size(); i++) {
+                ItemCommentWrapper itemCommentWrapper = values.get(i);
+                if (itemCommentWrapper.shouldShow()) {
+                    int size = itemCommentWrapper.getSize();
+                    if (position == progress) {
+                        return itemCommentWrapper;
+                    } else if (
+                            position >= progress + (itemCommentWrapper.shouldShow() ? 1 : 0) &&
+                            position < progress + size) {
+                        return getValuesItemHelper(
+                                itemCommentWrapper.getKids(),
+                                position - (progress + (itemCommentWrapper.shouldShow() ? 1 : 0)));
+                    } else {
+                        progress += itemCommentWrapper.getSize();
+                    }
+                } else {
+                    progress += itemCommentWrapper.getSize();
+                }
             }
         }
         return null;
@@ -166,7 +170,7 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         switch (viewType) {
             case STORY_HEADER_VIEW_TYPE:
                 View viewStory = LayoutInflater.from(parent.getContext())
-                        .inflate(R.layout.fragment_stories, parent, false);
+                        .inflate(R.layout.fragment_stories_white_background, parent, false);
                 return new ViewHolderStory(viewStory);
             case COMMENT_VIEW_TYPE:
             default:
@@ -200,8 +204,6 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                     @Override
                     public void onClick(View v) {
                         if (null != mListener) {
-                            // Notify the active callbacks interface (the activity, if the
-                            // fragment is attached to one) that an item has been selected.
                             mListener.onListFragmentInteraction(holderStory.mItem);
                         }
                     }
@@ -214,9 +216,9 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             }
         } else if (holder instanceof ViewHolderComment) {
             final ViewHolderComment holderComment = (ViewHolderComment) holder;
-            ItemCommentWrapper itemWrapper = getValuesItem(position - 1);
+            final ItemCommentWrapper itemWrapper = getValuesItem(position - 1);
             Item item;
-            if (itemWrapper != null && itemWrapper.getItem() != null) {
+            if (itemWrapper != null && itemWrapper.shouldShow()) {
                 item = itemWrapper.getItem();
                 holderComment.mItem = item;
                 holderComment.mAuthorTimeText.setText(item.getBy());
@@ -227,6 +229,8 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                                 DateUtils.getRelativeTimeSpanString(
                                         (long) item.getTime() * (long) 1000)));
                 holderComment.mCommentText.setText(Utils.trim(Html.fromHtml(item.getText())));
+                holderComment.mCommentText.setVisibility(
+                        itemWrapper.isCollapsed() ? View.GONE : View.VISIBLE);
                 ViewGroup.LayoutParams layoutParams = holderComment.mView.getLayoutParams();
                 if (layoutParams instanceof ViewGroup.MarginLayoutParams) {
                     ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams) layoutParams;
@@ -237,21 +241,39 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                             0);
                     holderComment.mView.requestLayout();
                 }
-                holderComment.mView.setVisibility(View.VISIBLE);
-                holderComment.mView.setOnClickListener(new View.OnClickListener() {
+                View.OnLongClickListener listener = new View.OnLongClickListener() {
                     @Override
-                    public void onClick(View v) {
+                    public boolean onLongClick(View v) {
                         if (null != mListener) {
-                            mListener.onListFragmentInteraction(holderComment.mItem);
+                            boolean isCollapsed = itemWrapper.isCollapsed();
+                            int position = getPositionForWrapper(itemWrapper);
+                            int beforeSize = itemWrapper.getDescendants();
+                            itemWrapper.setCollapsed(!isCollapsed);
+                            int afterSize = itemWrapper.getDescendants();
+                            if (position != -1) {
+                                if (isCollapsed) {
+                                    notifyCommentAdd(position + (itemWrapper.shouldShow() ? 1 : 0), afterSize);
+                                } else {
+                                    notifyCommentRemove(position + (itemWrapper.shouldShow() ? 1 : 0), beforeSize);
+                                }
+                                notifyCommentChange(position);
+                            } else {
+                                Log.e(StoryAdapter.class.getName(), "Item not found to un/collapse!");
+                            }
+                            v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+                            return true;
                         }
+                        return false;
                     }
-                });
+                };
+                holderComment.mView.setOnLongClickListener(listener);
+                holderComment.mCommentText.setOnLongClickListener(listener);
             } else {
                 holderComment.mItem = null;
                 holderComment.mAuthorTimeText.setText("");
                 holderComment.mCommentText.setText("");
-                holderComment.mView.setVisibility(View.GONE);
-                holderComment.mView.setOnClickListener(null);
+                holderComment.mView.setOnLongClickListener(null);
+                holderComment.mCommentText.setOnLongClickListener(null);
                 ViewGroup.LayoutParams layoutParams = holderComment.mView.getLayoutParams();
                 if (layoutParams instanceof ViewGroup.MarginLayoutParams) {
                     ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams) layoutParams;

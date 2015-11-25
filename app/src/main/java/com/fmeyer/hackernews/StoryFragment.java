@@ -121,8 +121,7 @@ public class StoryFragment extends Fragment {
                 new ValueEventListener() {
                     @Override
                     public void onDataChange(DataSnapshot dataSnapshot) {
-                        Item item = dataSnapshot.getValue(Item.class);
-                        mStoryItem = item;
+                        mStoryItem = dataSnapshot.getValue(Item.class);
                         mAdapter.setMainStory(mStoryItem);
                         if (mStoryItem.getDescendants() <= 0) {
                             setRefreshingState(false);
@@ -155,33 +154,32 @@ public class StoryFragment extends Fragment {
                 mAdapter.addComment(itemCommentWrapper);
             } else {
                 parentWrapper.addKid(itemCommentWrapper);
-                int descendants = itemCommentWrapper.getDescendants();
-                mAdapter.notifyCommentAdd(
-                        mAdapter.getPositionForWrapper(itemCommentWrapper),
-                        1 + descendants);
             }
             mLoadingComments.add(itemCommentWrapper);
             commentQuery.addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(DataSnapshot dataSnapshot) {
                     Item item = dataSnapshot.getValue(Item.class);
+                    boolean wasEmpty = itemCommentWrapper.getItem() == null;
                     if (item != null && !item.isDead() && !item.isDeleted()) {
                         itemCommentWrapper.setItem(item);
-                        mAdapter.notifyCommentChange(
-                                mAdapter.getPositionForWrapper(itemCommentWrapper));
+                        int position = mAdapter.getPositionForWrapper(itemCommentWrapper);
+                        if (position != -1) {
+                            if (wasEmpty) {
+                                mAdapter.notifyCommentAdd(position, 1);
+                            } else {
+                                mAdapter.notifyCommentChange(position);
+                            }
+                        }
                         if (item.getKids() != null && !item.getKids().isEmpty()) {
                             fetchComments(itemCommentWrapper, item, depth + 1);
                         }
                     } else {
-                        if (parentWrapper == null) {
-                            mAdapter.removeComment(itemCommentWrapper);
-                        } else {
-                            int removePosition = mAdapter.getPositionForWrapper(itemCommentWrapper);
-                            int descendants = itemCommentWrapper.getDescendants();
-                            parentWrapper.removeKid(itemCommentWrapper);
-                            mAdapter.notifyCommentRemove(removePosition, 1 + descendants);
+                        int removePosition = mAdapter.getPositionForWrapper(itemCommentWrapper);
+                        itemCommentWrapper.setItem(item);
+                        if (removePosition != -1) {
+                            mAdapter.notifyCommentRemove(removePosition, 1);
                         }
-
                     }
                     mLoadingComments.remove(itemCommentWrapper);
                     if (mLoadingComments.isEmpty()) {

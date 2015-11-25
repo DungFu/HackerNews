@@ -32,13 +32,54 @@ public class StoriesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
     }
 
     public void addStory(ItemWrapper itemWrapper) {
-        int count = mValues.size();
         mValues.add(itemWrapper);
-        notifyItemInserted(count);
+        if (itemWrapper.shouldShow()) {
+            notifyItemInserted(getPositionForItemWrapper(itemWrapper));
+        }
+    }
+
+    public int getPositionForItemWrapper(ItemWrapper itemWrapper) {
+        int retVal = -1;
+        int progress = 0;
+        if (itemWrapper.shouldShow()) {
+            for (int i = 0; i < mValues.size(); i++) {
+                if (itemWrapper == mValues.get(i)) {
+                    retVal = progress;
+                } else {
+                    progress += mValues.get(i).shouldShow() ? 1 : 0;
+                }
+            }
+        }
+        return retVal;
+    }
+
+    private ItemWrapper getItemWrapperFromPosition(int position) {
+        int progress = 0;
+        for (int i = 0; i < mValues.size(); i++) {
+            if (progress == position && mValues.get(i).shouldShow()) {
+                return mValues.get(i);
+            } else {
+                progress += mValues.get(i).shouldShow() ? 1 : 0;
+            }
+        }
+        return null;
+    }
+
+    public void notifyAddStory(ItemWrapper itemWrapper) {
+        int index = getPositionForItemWrapper(itemWrapper);
+        if (index != -1) {
+            notifyItemInserted(index);
+        }
+    }
+
+    public void notifyRemoveStory(int position) {
+        if (position != -1) {
+            notifyItemRemoved(position);
+        }
     }
 
     public void notifyUpdateStory(ItemWrapper itemWrapper) {
-        int index = mValues.indexOf(itemWrapper);
+        int index = getPositionForItemWrapper(itemWrapper);
         if (index != -1) {
             notifyItemChanged(index);
         }
@@ -59,9 +100,9 @@ public class StoriesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
     @Override
     public void onBindViewHolder(final RecyclerView.ViewHolder holder, int position) {
         final ViewHolderStory holderStory = (ViewHolderStory) holder;
-        ItemWrapper itemWrapper = mValues.get(position);
+        ItemWrapper itemWrapper = getItemWrapperFromPosition(position);
         Item item;
-        if (itemWrapper.getItem() != null) {
+        if (itemWrapper != null && itemWrapper.shouldShow()) {
             item = itemWrapper.getItem();
             holderStory.mItem = item;
             holderStory.mCommentsView.setText(Integer.toString(item.getDescendants()));
@@ -76,11 +117,10 @@ public class StoriesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
             holderStory.mCommentsImageView.getDrawable().setColorFilter(
                     holderStory.mView.getResources().getColor(R.color.mediumGrey),
                     PorterDuff.Mode.SRC_ATOP);
-            holderStory.mView.setVisibility(View.VISIBLE);
             holderStory.mView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    if (null != mListener) {
+                    if (mListener != null) {
                         mListener.onListFragmentInteraction(
                                 holderStory.mItem,
                                 StoriesFragment.CLICK_INTERACTION_TYPE.URL);
@@ -90,7 +130,7 @@ public class StoriesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
             holderStory.mCommentsContainer.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    if (null != mListener) {
+                    if (mListener != null) {
                         mListener.onListFragmentInteraction(
                                 holderStory.mItem,
                                 StoriesFragment.CLICK_INTERACTION_TYPE.COMMENTS);
@@ -102,7 +142,6 @@ public class StoriesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
             holderStory.mCommentsView.setText("");
             holderStory.mTitleView.setText("");
             holderStory.mSubtitleView.setText("");
-            holderStory.mView.setVisibility(View.GONE);
             holderStory.mView.setOnClickListener(null);
             holderStory.mCommentsContainer.setOnClickListener(null);
         }
@@ -110,7 +149,11 @@ public class StoriesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
 
     @Override
     public int getItemCount() {
-        return mValues.size();
+        int size = 0;
+        for (int i = 0; i < mValues.size(); i++) {
+            size += mValues.get(i).shouldShow() ? 1 : 0;
+        }
+        return size;
     }
 
     public class ViewHolderStory extends RecyclerView.ViewHolder {

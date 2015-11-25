@@ -11,4 +11,8 @@ public class ItemWrapper {
     public void setItem(Item item) {
         this.item = item;
     }
+
+    public boolean shouldShow() {
+        return item != null && !item.isDeleted() && !item.isDead();
+    }
 }

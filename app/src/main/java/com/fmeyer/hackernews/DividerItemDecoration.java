@@ -5,7 +5,6 @@ import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
-import android.view.ViewGroup;
 
 public class DividerItemDecoration extends RecyclerView.ItemDecoration {
     private Drawable mDivider;
@@ -16,25 +15,28 @@ public class DividerItemDecoration extends RecyclerView.ItemDecoration {
 
     @Override
     public void onDrawOver(Canvas c, RecyclerView parent, RecyclerView.State state) {
-        int left = parent.getPaddingLeft();
-        int right = parent.getWidth() - parent.getPaddingRight();
+        int right = parent.getWidth();
+        int dividerHeight = mDivider.getIntrinsicHeight();
 
         int childCount = parent.getChildCount();
-        for (int i = 0; i < childCount; i++) {
+        for (int i = 0; i < childCount - 1; i++) {
             View child = parent.getChildAt(i);
+            View nextChild = parent.getChildAt(i + 1);
 
-            ViewGroup.LayoutParams layoutParams = child.getLayoutParams();
-            int leftMargin = 0;
-            if (layoutParams instanceof ViewGroup.MarginLayoutParams) {
-                leftMargin = ((ViewGroup.MarginLayoutParams) layoutParams).leftMargin;
+            RecyclerView.LayoutParams layoutParams1 =
+                    (RecyclerView.LayoutParams) child.getLayoutParams();
+            RecyclerView.LayoutParams layoutParams2 =
+                    (RecyclerView.LayoutParams) nextChild.getLayoutParams();
+            int left = 0;
+            if (layoutParams1 != null && layoutParams2 != null) {
+                left = Math.min(layoutParams1.leftMargin, layoutParams2.leftMargin);
             }
 
-            RecyclerView.LayoutParams params = (RecyclerView.LayoutParams) child.getLayoutParams();
+            int ty = (int) (child.getTranslationY() + 0.5f);
+            int top = child.getBottom() + ty;
+            int bottom = top + dividerHeight;
 
-            int top = child.getBottom() + params.bottomMargin;
-            int bottom = top + mDivider.getIntrinsicHeight();
-
-            mDivider.setBounds(leftMargin + left, top, right, bottom);
+            mDivider.setBounds(left, top, right, bottom);
             mDivider.draw(c);
         }
     }

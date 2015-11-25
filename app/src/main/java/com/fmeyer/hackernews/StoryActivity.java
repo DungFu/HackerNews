@@ -1,5 +1,7 @@
 package com.fmeyer.hackernews;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
@@ -20,7 +22,6 @@ public class StoryActivity extends AppCompatActivity implements StoryFragment.On
         setupActionBar();
 
         Firebase.setAndroidContext(this);
-
 
         if (getIntent().getExtras() != null) {
             mStoryItem = getIntent().getExtras().getParcelable(Constants.EXTRA_STORY_ITEM);
@@ -56,8 +57,16 @@ public class StoryActivity extends AppCompatActivity implements StoryFragment.On
         return super.onOptionsItemSelected(item);
     }
 
+    private void launchUrl(Item item) {
+        if (item != null && item.getUrl() != null) {
+            Uri uri = Uri.parse(item.getUrl());
+            Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+            startActivity(intent);
+        }
+    }
+
     @Override
     public void onListFragmentInteraction(Item item) {
-        // do nothing
+        launchUrl(item);
     }
 }
