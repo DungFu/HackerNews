@@ -3,6 +3,7 @@ package com.fmeyer.hackernews;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentTransaction;
 import android.support.design.widget.NavigationView;
 import android.support.v4.view.GravityCompat;
@@ -17,9 +18,14 @@ import android.view.MenuItem;
 import com.firebase.client.Firebase;
 import com.fmeyer.hackernews.models.Item;
 
+import java.util.HashMap;
+import java.util.Map;
+
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, StoriesFragment.OnListFragmentInteractionListener {
+
+    Map<String, StoriesFragment> mStoriesFragment = new HashMap<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,7 +38,7 @@ public class MainActivity extends AppCompatActivity
         setSupportActionBar(toolbar);
 
         FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
-        ft.replace(R.id.content_main_placeholder, StoriesFragment.newInstance("topstories"));
+        ft.replace(R.id.content_main_placeholder, createOrGetFragmentFromFilterType("topstories"));
         ft.commit();
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
@@ -110,7 +116,7 @@ public class MainActivity extends AppCompatActivity
         }
 
         FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
-        ft.replace(R.id.content_main_placeholder, StoriesFragment.newInstance(filterType));
+        ft.replace(R.id.content_main_placeholder, createOrGetFragmentFromFilterType(filterType));
         ft.commit();
 
         if (getSupportActionBar() != null) {
@@ -120,6 +126,17 @@ public class MainActivity extends AppCompatActivity
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         drawer.closeDrawer(GravityCompat.START);
         return true;
+    }
+
+    private StoriesFragment createOrGetFragmentFromFilterType(String filterType) {
+        StoriesFragment fragment;
+        if (mStoriesFragment.containsKey(filterType)) {
+            fragment = mStoriesFragment.get(filterType);
+        } else {
+            fragment = StoriesFragment.newInstance(filterType);
+            mStoriesFragment.put(filterType, fragment);
+        }
+        return fragment;
     }
 
     private void launchUrl(Item item) {
