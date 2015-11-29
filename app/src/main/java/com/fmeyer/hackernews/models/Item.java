@@ -3,6 +3,8 @@ package com.fmeyer.hackernews.models;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import com.fmeyer.hackernews.db.ItemDb;
+
 import java.util.ArrayList;
 
 public class Item implements Parcelable {
@@ -23,6 +25,23 @@ public class Item implements Parcelable {
     int descendants;
 
     public Item() {
+    }
+
+    public Item(ItemDb itemDb) {
+        this.id = itemDb.getItemId();
+        this.deleted = itemDb.isDeleted();
+        this.type = itemDb.getType();
+        this.by = itemDb.getBy();
+        this.time = itemDb.getTime();
+        this.text = itemDb.getText();
+        this.dead = itemDb.isDead();
+        this.parent = itemDb.getParent();
+        this.kids = itemDb.getKids();
+        this.url = itemDb.getUrl();
+        this.score = itemDb.getScore();
+        this.title = itemDb.getTitle();
+        this.parts = itemDb.getParts();
+        this.descendants = itemDb.getDescendants();
     }
 
     @Override
