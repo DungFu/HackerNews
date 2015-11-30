@@ -38,6 +38,7 @@ import java.util.Set;
 public class StoriesFragment extends Fragment {
 
     private static final String ARG_FILTER_TYPE = "filter_type";
+    private static final int LOAD_MORE_ITEMS_BUFFER_SIZE = 3;
 
     private String mFilterType = "topstories";
     private StoryInteractionListener mStoryListener;
@@ -117,8 +118,11 @@ public class StoriesFragment extends Fragment {
             public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
                 super.onScrolled(recyclerView, dx, dy);
 
+                int lastVisiblePlusBuffer = mLayoutManager.findLastVisibleItemPosition() +
+                        LOAD_MORE_ITEMS_BUFFER_SIZE;
+
                 if (mHasMorePages &&
-                    mLayoutManager.findLastVisibleItemPosition() + 3 >= mLayoutManager.getItemCount() &&
+                    lastVisiblePlusBuffer >= mLayoutManager.getItemCount() &&
                     mFirstPageLoaded) {
                     mPage++;
                     fetchStoriesFromFirebase(10, mPage);
