@@ -1,7 +1,9 @@
 package com.fmeyer.hackernews;
 
+import android.content.Context;
 import android.graphics.PorterDuff;
 import android.support.annotation.Nullable;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.widget.RecyclerView;
 import android.text.Html;
 import android.text.format.DateUtils;
@@ -185,6 +187,7 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         if (holder instanceof ViewHolderStory) {
             final ViewHolderStory holderStory = (ViewHolderStory) holder;
             if (mMainStory != null) {
+                Context context = holderStory.mView.getContext();
                 holderStory.mItem = mMainStory;
                 holderStory.mCommentsView.setText(Integer.toString(mMainStory.getDescendants()));
                 holderStory.mTitleView.setText(mMainStory.getTitle());
@@ -197,9 +200,8 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                                         (long) mMainStory.getTime() * (long) 1000)));
                 holderStory.mView.setBackgroundResource(R.color.white);
                 holderStory.mCommentsImageView.getDrawable().setColorFilter(
-                        holderStory.mView.getResources().getColor(R.color.mediumGrey),
+                        ContextCompat.getColor(context, R.color.mediumGrey),
                         PorterDuff.Mode.SRC_ATOP);
-
                 holderStory.mView.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {

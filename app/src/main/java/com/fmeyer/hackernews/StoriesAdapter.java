@@ -38,6 +38,31 @@ public class StoriesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
         }
     }
 
+    public void addStory(ItemWrapper itemWrapper, int newPosition) {
+        mValues.add(newPosition, itemWrapper);
+        if (itemWrapper.shouldShow()) {
+            notifyItemInserted(getPositionForItemWrapper(itemWrapper));
+        }
+    }
+
+    public void moveStory(ItemWrapper itemWrapper, int newPosition) {
+        if (mValues.contains(itemWrapper)) {
+            int oldPosition = getPositionForItemWrapper(itemWrapper);
+            mValues.remove(itemWrapper);
+            mValues.add(newPosition, itemWrapper);
+            notifyMoveStory(oldPosition, itemWrapper);
+        } else {
+            mValues.add(newPosition, itemWrapper);
+            notifyAddStory(itemWrapper);
+        }
+    }
+
+    public void removeStory(ItemWrapper itemWrapper) {
+        int oldPosition = getPositionForItemWrapper(itemWrapper);
+        mValues.remove(itemWrapper);
+        notifyRemoveStory(oldPosition);
+    }
+
     public int getPositionForItemWrapper(ItemWrapper itemWrapper) {
         int retVal = -1;
         int progress = 0;
@@ -82,6 +107,13 @@ public class StoriesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
         int index = getPositionForItemWrapper(itemWrapper);
         if (index != -1) {
             notifyItemChanged(index);
+        }
+    }
+
+    public void notifyMoveStory(int oldPosition, ItemWrapper itemWrapper) {
+        int index = getPositionForItemWrapper(itemWrapper);
+        if (oldPosition != -1 && index != -1 && oldPosition != index) {
+            notifyItemMoved(oldPosition, index);
         }
     }
 

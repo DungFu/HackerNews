@@ -197,15 +197,36 @@ public class StoriesFragment extends Fragment {
                     mFirstPageLoaded = true;
                 }
                 boolean hasData = false;
-                ArrayList<Integer> storyIdsDb = new ArrayList<Integer>();
+                ArrayList<Integer> storyIdsDb = new ArrayList<>();
                 for (DataSnapshot child : dataSnapshot.getChildren()) {
                     storyIdsDb.add(child.getValue(Integer.class));
                 }
                 StoriesDb storiesDb = StoriesDb.getStoriesDbFromFilterType(mFilterType);
                 if (isFirstPage) {
-                    mAdapter.clear();
-                    mItemWrappers.clear();
-                    mLoadingStories.clear();
+                    Map<Integer, ItemWrapper> itemKeysToRemove = new HashMap<>();
+                    for (Integer itemWrapperKey : mItemWrappers.keySet()) {
+                        ItemWrapper itemWrapper = mItemWrappers.get(itemWrapperKey);
+                        if (itemWrapper.getItem() != null &&
+                            storyIdsDb.contains(itemWrapper.getItem().getId())) {
+                            int newPosition = storyIdsDb.indexOf(itemWrapperKey);
+                            mAdapter.moveStory(itemWrapper, newPosition);
+                        } else if (itemWrapper.getItem() != null &&
+                                   !storyIdsDb.contains(itemWrapper.getItem().getId())) {
+                            itemKeysToRemove.put(itemWrapperKey, itemWrapper);
+                        }
+                    }
+                    for (Integer storyId : storyIdsDb) {
+                        if (!mItemWrappers.containsKey(storyId)) {
+                            int index = storyIdsDb.indexOf(storyId);
+                            getItemWrapperFromId(storyId, index);
+                        }
+                    }
+                    for (Integer itemKey : itemKeysToRemove.keySet()) {
+                        ItemWrapper itemWrapper = itemKeysToRemove.get(itemKey);
+                        mItemWrappers.remove(itemKey);
+                        mLoadingStories.remove(itemWrapper);
+                        mAdapter.removeStory(itemWrapper);
+                    }
                     if (storiesDb != null) {
                         storiesDb.setStoryIds(storyIdsDb);
                         storiesDb.save();
@@ -213,7 +234,6 @@ public class StoriesFragment extends Fragment {
                         storiesDb = new StoriesDb(mFilterType, storyIdsDb);
                         storiesDb.save();
                     }
-                    mAdapter.notifyDataSetChanged();
                 }
                 for (DataSnapshot child : dataSnapshot.getChildren()) {
                     hasData = true;
@@ -247,26 +267,30 @@ public class StoriesFragment extends Fragment {
     private void fetchStoryFromDb(Integer itemId) {
         ItemDb itemDb = ItemDb.getItemDbFromId(itemId);
         if (itemDb != null) {
-            ItemWrapper itemWrapper = getItemWrapperFromId(itemId);
+            ItemWrapper itemWrapper = getItemWrapperFromId(itemId, -1);
             Item item = new Item(itemDb);
             updateAdapterWithNewItem(itemWrapper, item);
         }
     }
 
-    private ItemWrapper getItemWrapperFromId(Integer itemId) {
+    private ItemWrapper getItemWrapperFromId(Integer itemId, int position) {
         if (mItemWrappers.containsKey(itemId)) {
             return mItemWrappers.get(itemId);
         } else {
             ItemWrapper itemWrapper = new ItemWrapper();
             mItemWrappers.put(itemId, itemWrapper);
-            mAdapter.addStory(itemWrapper);
+            if (position > -1) {
+                mAdapter.addStory(itemWrapper, position);
+            } else {
+                mAdapter.addStory(itemWrapper);
+            }
             mLoadingStories.add(itemWrapper);
             return itemWrapper;
         }
     }
 
     private void fetchStoryFromFirebase(Integer itemId, final boolean shouldStoreInDb) {
-        final ItemWrapper itemWrapper = getItemWrapperFromId(itemId);
+        final ItemWrapper itemWrapper = getItemWrapperFromId(itemId, -1);
         ValueEventListener listener = new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
