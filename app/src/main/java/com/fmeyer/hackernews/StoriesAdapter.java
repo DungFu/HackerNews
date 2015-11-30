@@ -3,6 +3,7 @@ package com.fmeyer.hackernews;
 import android.graphics.PorterDuff;
 import android.support.v7.widget.RecyclerView;
 import android.text.format.DateUtils;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -52,8 +53,7 @@ public class StoriesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
             mValues.add(newPosition, itemWrapper);
             notifyMoveStory(oldPosition, itemWrapper);
         } else {
-            mValues.add(newPosition, itemWrapper);
-            notifyAddStory(itemWrapper);
+            Log.e(StoriesAdapter.class.getName(), "Tried to move story that is not in adapter!");
         }
     }
 
@@ -113,7 +113,8 @@ public class StoriesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
     public void notifyMoveStory(int oldPosition, ItemWrapper itemWrapper) {
         int index = getPositionForItemWrapper(itemWrapper);
         if (oldPosition != -1 && index != -1 && oldPosition != index) {
-            notifyItemMoved(oldPosition, index);
+            notifyItemRemoved(oldPosition);
+            notifyItemInserted(index);
         }
     }
 

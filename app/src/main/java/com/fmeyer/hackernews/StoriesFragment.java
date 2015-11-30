@@ -7,6 +7,7 @@ import android.support.v4.util.Pair;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.SparseArray;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -24,6 +25,7 @@ import com.fmeyer.hackernews.models.ItemWrapper;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
@@ -203,30 +205,46 @@ public class StoriesFragment extends Fragment {
                 }
                 StoriesDb storiesDb = StoriesDb.getStoriesDbFromFilterType(mFilterType);
                 if (isFirstPage) {
-                    Map<Integer, ItemWrapper> itemKeysToRemove = new HashMap<>();
-                    for (Integer itemWrapperKey : mItemWrappers.keySet()) {
-                        ItemWrapper itemWrapper = mItemWrappers.get(itemWrapperKey);
+
+                    // Add new stories
+                    for (int i = 0; i < storyIdsDb.size(); i++) {
+                        getItemWrapperFromId(storyIdsDb.get(i), i);
+                    }
+
+                    // collect list of stories that are removed in sparse array
+                    SparseArray<ItemWrapper> itemsToRemove = new SparseArray<>();
+                    Iterator itRemove = mItemWrappers.entrySet().iterator();
+                    while (itRemove.hasNext()) {
+                        Map.Entry pair = (Map.Entry) itRemove.next();
+                        ItemWrapper itemWrapper = (ItemWrapper) pair.getValue();
                         if (itemWrapper.getItem() != null &&
-                            storyIdsDb.contains(itemWrapper.getItem().getId())) {
-                            int newPosition = storyIdsDb.indexOf(itemWrapperKey);
-                            mAdapter.moveStory(itemWrapper, newPosition);
-                        } else if (itemWrapper.getItem() != null &&
-                                   !storyIdsDb.contains(itemWrapper.getItem().getId())) {
-                            itemKeysToRemove.put(itemWrapperKey, itemWrapper);
+                                !storyIdsDb.contains(itemWrapper.getItem().getId())) {
+                            itemsToRemove.put((int) pair.getKey(), itemWrapper);
                         }
                     }
-                    for (Integer storyId : storyIdsDb) {
-                        if (!mItemWrappers.containsKey(storyId)) {
-                            int index = storyIdsDb.indexOf(storyId);
-                            getItemWrapperFromId(storyId, index);
-                        }
-                    }
-                    for (Integer itemKey : itemKeysToRemove.keySet()) {
-                        ItemWrapper itemWrapper = itemKeysToRemove.get(itemKey);
+
+                    // remove stories that are in sparse array
+                    for (int i = 0; i < itemsToRemove.size(); i++) {
+                        Integer itemKey = itemsToRemove.keyAt(i);
+                        ItemWrapper itemWrapper = itemsToRemove.get(itemKey);
                         mItemWrappers.remove(itemKey);
                         mLoadingStories.remove(itemWrapper);
                         mAdapter.removeStory(itemWrapper);
                     }
+
+                    // Move stories are neither new nor removed
+                    Iterator itMove = mItemWrappers.entrySet().iterator();
+                    while (itMove.hasNext()) {
+                        Map.Entry pair = (Map.Entry) itMove.next();
+                        ItemWrapper itemWrapper = (ItemWrapper) pair.getValue();
+                        if (itemWrapper.getItem() != null &&
+                                storyIdsDb.contains(itemWrapper.getItem().getId())) {
+                            int newPosition = storyIdsDb.indexOf(pair.getKey());
+                            mAdapter.moveStory(itemWrapper, newPosition);
+                        }
+                    }
+
+                    // Update the database entry for this filter type
                     if (storiesDb != null) {
                         storiesDb.setStoryIds(storyIdsDb);
                         storiesDb.save();
@@ -251,15 +269,29 @@ public class StoriesFragment extends Fragment {
         });
     }
 
+    private boolean needsUiUpdate(Item oldItem, Item newItem) {
+        return oldItem == null ||
+                newItem == null ||
+                !oldItem.getTitle().equals(newItem.getTitle()) ||
+                oldItem.getDescendants() != newItem.getDescendants() ||
+                oldItem.getScore() != newItem.getScore() ||
+                !oldItem.getBy().equals(newItem.getBy()) ||
+                oldItem.getTime() != newItem.getTime();
+    }
+
     private void updateAdapterWithNewItem(ItemWrapper itemWrapper, Item item) {
-        boolean shouldShow = itemWrapper.shouldShow();
+        boolean oldShouldShow = itemWrapper.shouldShow();
         int beforePosition = mAdapter.getPositionForItemWrapper(itemWrapper);
+        Item oldItem = itemWrapper.getItem();
         itemWrapper.setItem(item);
-        if (!shouldShow && itemWrapper.shouldShow()) {
+        boolean newShouldShow = itemWrapper.shouldShow();
+        if (!oldShouldShow && newShouldShow) {
             mAdapter.notifyAddStory(itemWrapper);
-        } else if (shouldShow && itemWrapper.shouldShow()) {
-            mAdapter.notifyUpdateStory(itemWrapper);
-        } else if (shouldShow && !itemWrapper.shouldShow()) {
+        } else if (oldShouldShow && newShouldShow) {
+            if (needsUiUpdate(oldItem, itemWrapper.getItem())) {
+                mAdapter.notifyUpdateStory(itemWrapper);
+            }
+        } else if (oldShouldShow && !newShouldShow) {
             mAdapter.notifyRemoveStory(beforePosition);
         }
     }
