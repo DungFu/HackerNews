@@ -1,7 +1,9 @@
 package com.fmeyer.hackernews;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.LinearLayoutManager;
@@ -38,6 +40,7 @@ public class StoryFragment extends Fragment {
     private LinearLayoutManager mLayoutManager;
     private StoryAdapter mAdapter;
     private Runnable mRefreshingRunnable;
+    private boolean mAnimationsEnabled;
 
     private final Set<ItemCommentWrapper> mLoadingComments = new HashSet<>();
 
@@ -70,11 +73,17 @@ public class StoryFragment extends Fragment {
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_list, container, false);
 
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        mAnimationsEnabled = prefs.getBoolean("animations_switch", true);
+
         mRecyclerView = (RecyclerView) view.findViewById(R.id.list);
         mSwipeContainer = (SwipeRefreshLayout) view.findViewById(R.id.swipe_container);
 
         mRecyclerView.setBackgroundResource(R.color.mediumGrey);
         mRecyclerView.addItemDecoration(new DividerItemDecoration(getActivity()));
+        if (!mAnimationsEnabled) {
+            mRecyclerView.setItemAnimator(null);
+        }
 
         // Set the adapter
         Context context = mRecyclerView.getContext();

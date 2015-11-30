@@ -1,7 +1,9 @@
 package com.fmeyer.hackernews;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.support.v4.util.Pair;
 import android.support.v4.widget.SwipeRefreshLayout;
@@ -55,6 +57,7 @@ public class StoriesFragment extends Fragment {
     private boolean mHasMorePages = true;
     private Runnable mRefreshingRunnable;
     private boolean mFirstPageLoaded = false;
+    private boolean mAnimationsEnabled;
 
     private final Set<Pair<Firebase, ValueEventListener>> mValueEventsListeners = new HashSet<>();
     private final Map<Integer, ItemWrapper> mItemWrappers = new HashMap<>();
@@ -89,11 +92,17 @@ public class StoriesFragment extends Fragment {
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_list, container, false);
 
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        mAnimationsEnabled = prefs.getBoolean("animations_switch", true);
+
         mRecyclerView = (RecyclerView) view.findViewById(R.id.list);
         mSwipeContainer = (SwipeRefreshLayout) view.findViewById(R.id.swipe_container);
 
         mRecyclerView.setBackgroundResource(R.color.white);
         mRecyclerView.addItemDecoration(new DividerItemDecoration(getActivity()));
+        if (!mAnimationsEnabled) {
+            mRecyclerView.setItemAnimator(null);
+        }
 
         // Set the adapter
         Context context = mRecyclerView.getContext();
