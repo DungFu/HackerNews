@@ -19,22 +19,19 @@ import com.firebase.client.Query;
 import com.firebase.client.ValueEventListener;
 import com.fmeyer.hackernews.models.Item;
 import com.fmeyer.hackernews.models.ItemCommentWrapper;
+import com.fmeyer.hackernews.views.listeners.CommentInteractionListener;
+import com.fmeyer.hackernews.views.listeners.StoryInteractionListener;
 
 import java.util.HashSet;
 import java.util.Set;
 
-/**
- * A fragment representing a list of Items.
- * <p/>
- * Activities containing this fragment MUST implement the {@link OnListFragmentInteractionListener}
- * interface.
- */
 public class StoryFragment extends Fragment {
 
     private static final String ARG_STORY_ITEM = "story_item";
 
     private Item mStoryItem;
-    private OnListFragmentInteractionListener mListener;
+    private StoryInteractionListener mStoryListener;
+    private CommentInteractionListener mCommentListener;
     private RecyclerView mRecyclerView;
     private SwipeRefreshLayout mSwipeContainer;
     private LinearLayoutManager mLayoutManager;
@@ -89,7 +86,7 @@ public class StoryFragment extends Fragment {
         Context context = mRecyclerView.getContext();
         mLayoutManager = new LinearLayoutManager(context);
         mRecyclerView.setLayoutManager(mLayoutManager);
-        mAdapter = new StoryAdapter(mListener);
+        mAdapter = new StoryAdapter(mStoryListener, mCommentListener);
         mRecyclerView.setAdapter(mAdapter);
 
         mAdapter.setMainStory(mStoryItem);
@@ -207,31 +204,19 @@ public class StoryFragment extends Fragment {
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
-        if (context instanceof OnListFragmentInteractionListener) {
-            mListener = (OnListFragmentInteractionListener) context;
+        if (context instanceof StoryInteractionListener && context instanceof CommentInteractionListener) {
+            mStoryListener = (StoryInteractionListener) context;
+            mCommentListener = (CommentInteractionListener) context;
         } else {
             throw new RuntimeException(context.toString()
-                    + " must implement OnListFragmentInteractionListener");
+                    + " must implement StoryInteractionListener and CommentInteractionListener");
         }
     }
 
     @Override
     public void onDetach() {
         super.onDetach();
-        mListener = null;
-    }
-
-    /**
-     * This interface must be implemented by activities that contain this
-     * fragment to allow an interaction in this fragment to be communicated
-     * to the activity and potentially other fragments contained in that
-     * activity.
-     * <p/>
-     * See the Android Training lesson <a href=
-     * "http://developer.android.com/training/basics/fragments/communicating.html"
-     * >Communicating with Other Fragments</a> for more information.
-     */
-    public interface OnListFragmentInteractionListener {
-        void onListFragmentInteraction(Item item);
+        mStoryListener = null;
+        mCommentListener = null;
     }
 }

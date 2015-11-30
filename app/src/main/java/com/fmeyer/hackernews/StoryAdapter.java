@@ -1,45 +1,40 @@
 package com.fmeyer.hackernews;
 
-import android.content.Context;
-import android.graphics.PorterDuff;
 import android.support.annotation.Nullable;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.widget.RecyclerView;
-import android.text.Html;
-import android.text.format.DateUtils;
 import android.util.Log;
-import android.view.HapticFeedbackConstants;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.ProgressBar;
-import android.widget.TextView;
 
-import com.fmeyer.hackernews.StoryFragment.OnListFragmentInteractionListener;
 import com.fmeyer.hackernews.models.Item;
 import com.fmeyer.hackernews.models.ItemCommentWrapper;
+import com.fmeyer.hackernews.views.binders.ViewBinderComment;
+import com.fmeyer.hackernews.views.binders.ViewBinderStory;
+import com.fmeyer.hackernews.views.holders.ViewHolderComment;
+import com.fmeyer.hackernews.views.holders.ViewHolderStory;
+import com.fmeyer.hackernews.views.listeners.CommentInteractionListener;
+import com.fmeyer.hackernews.views.listeners.StoryInteractionListener;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * {@link RecyclerView.Adapter} that can display a {@link Item} and makes a call to the
- * specified {@link OnListFragmentInteractionListener}.
- */
 public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     private static final int STORY_HEADER_VIEW_TYPE = 0;
     private static final int COMMENT_VIEW_TYPE = 1;
 
     private final List<ItemCommentWrapper> mValues = new ArrayList<>();
-    private final OnListFragmentInteractionListener mListener;
+    private final StoryInteractionListener mStoryListener;
+    private final CommentInteractionListener mCommentListener;
 
     private Item mMainStory;
 
-    public StoryAdapter(OnListFragmentInteractionListener listener) {
-        mListener = listener;
+    public StoryAdapter(
+            StoryInteractionListener storyListener,
+            CommentInteractionListener commentListener) {
+        mStoryListener = storyListener;
+        mCommentListener = commentListener;
     }
 
     public void setMainStory(Item item) {
@@ -187,101 +182,13 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         if (holder instanceof ViewHolderStory) {
             final ViewHolderStory holderStory = (ViewHolderStory) holder;
             if (mMainStory != null) {
-                Context context = holderStory.mView.getContext();
-                holderStory.mItem = mMainStory;
-                holderStory.mCommentsView.setText(Integer.toString(mMainStory.getDescendants()));
-                holderStory.mTitleView.setText(mMainStory.getTitle());
-                holderStory.mSubtitleView.setText(
-                        String.format(
-                                holderStory.mView.getResources().getString(R.string.post_subtitle),
-                                Integer.toString(mMainStory.getScore()),
-                                mMainStory.getBy(),
-                                DateUtils.getRelativeTimeSpanString(
-                                        (long) mMainStory.getTime() * (long) 1000)));
-                holderStory.mView.setBackgroundResource(R.color.white);
-                holderStory.mCommentsImageView.getDrawable().setColorFilter(
-                        ContextCompat.getColor(context, R.color.mediumGrey),
-                        PorterDuff.Mode.SRC_ATOP);
-                holderStory.mView.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        if (null != mListener) {
-                            mListener.onListFragmentInteraction(holderStory.mItem);
-                        }
-                    }
-                });
-            } else {
-                holderStory.mItem = null;
-                holderStory.mCommentsView.setText("");
-                holderStory.mTitleView.setText("");
-                holderStory.mSubtitleView.setText("");
+                ViewBinderStory.bind(holderStory, mStoryListener, mMainStory, false);
             }
         } else if (holder instanceof ViewHolderComment) {
             final ViewHolderComment holderComment = (ViewHolderComment) holder;
             final ItemCommentWrapper itemWrapper = getValuesItem(position - 1);
-            Item item;
             if (itemWrapper != null && itemWrapper.shouldShow()) {
-                item = itemWrapper.getItem();
-                holderComment.mItem = item;
-                holderComment.mAuthorTimeText.setText(item.getBy());
-                holderComment.mAuthorTimeText.setText(
-                        String.format(
-                                holderComment.mView.getResources().getString(R.string.comment_author_time),
-                                item.getBy(),
-                                DateUtils.getRelativeTimeSpanString(
-                                        (long) item.getTime() * (long) 1000)));
-                holderComment.mCommentText.setText(Utils.trim(Html.fromHtml(item.getText())));
-                holderComment.mCommentText.setVisibility(
-                        itemWrapper.isCollapsed() ? View.GONE : View.VISIBLE);
-                ViewGroup.LayoutParams layoutParams = holderComment.mView.getLayoutParams();
-                if (layoutParams instanceof ViewGroup.MarginLayoutParams) {
-                    ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams) layoutParams;
-                    p.setMargins(
-                            (int) (holderComment.mView.getResources().getDimension(R.dimen.comment_indent) * itemWrapper.getDepth()),
-                            0,
-                            0,
-                            0);
-                    holderComment.mView.requestLayout();
-                }
-                View.OnLongClickListener listener = new View.OnLongClickListener() {
-                    @Override
-                    public boolean onLongClick(View v) {
-                        if (null != mListener) {
-                            boolean isCollapsed = itemWrapper.isCollapsed();
-                            int position = getPositionForWrapper(itemWrapper);
-                            int beforeSize = itemWrapper.getDescendants();
-                            itemWrapper.setCollapsed(!isCollapsed);
-                            int afterSize = itemWrapper.getDescendants();
-                            if (position != -1) {
-                                if (isCollapsed) {
-                                    notifyCommentAdd(position + (itemWrapper.shouldShow() ? 1 : 0), afterSize);
-                                } else {
-                                    notifyCommentRemove(position + (itemWrapper.shouldShow() ? 1 : 0), beforeSize);
-                                }
-                                notifyCommentChange(position);
-                            } else {
-                                Log.e(StoryAdapter.class.getName(), "Item not found to un/collapse!");
-                            }
-                            v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-                            return true;
-                        }
-                        return false;
-                    }
-                };
-                holderComment.mView.setOnLongClickListener(listener);
-                holderComment.mCommentText.setOnLongClickListener(listener);
-            } else {
-                holderComment.mItem = null;
-                holderComment.mAuthorTimeText.setText("");
-                holderComment.mCommentText.setText("");
-                holderComment.mView.setOnLongClickListener(null);
-                holderComment.mCommentText.setOnLongClickListener(null);
-                ViewGroup.LayoutParams layoutParams = holderComment.mView.getLayoutParams();
-                if (layoutParams instanceof ViewGroup.MarginLayoutParams) {
-                    ViewGroup.MarginLayoutParams p = (ViewGroup.MarginLayoutParams) layoutParams;
-                    p.setMargins(0, 0, 0, 0);
-                    holderComment.mView.requestLayout();
-                }
+                ViewBinderComment.bind(this, holderComment, mCommentListener, itemWrapper);
             }
         }
     }
@@ -289,39 +196,5 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
     @Override
     public int getItemCount() {
         return (mMainStory != null ? 1 : 0) + getValuesSize();
-    }
-
-    public class ViewHolderStory extends RecyclerView.ViewHolder {
-        public final View mView;
-        public final LinearLayout mCommentsContainer;
-        public final ImageView mCommentsImageView;
-        public final TextView mCommentsView;
-        public final TextView mTitleView;
-        public final TextView mSubtitleView;
-        public Item mItem;
-
-        public ViewHolderStory(View view) {
-            super(view);
-            mView = view;
-            mCommentsContainer = (LinearLayout) view.findViewById(R.id.comments_container);
-            mCommentsImageView = (ImageView) view.findViewById(R.id.comments_image);
-            mCommentsView = (TextView) view.findViewById(R.id.comments);
-            mTitleView = (TextView) view.findViewById(R.id.title);
-            mSubtitleView = (TextView) view.findViewById(R.id.subtitle);
-        }
-    }
-
-    public class ViewHolderComment extends RecyclerView.ViewHolder {
-        public final View mView;
-        public final TextView mAuthorTimeText;
-        public final TextView mCommentText;
-        public Item mItem;
-
-        public ViewHolderComment(View view) {
-            super(view);
-            mView = view;
-            mAuthorTimeText = (TextView) view.findViewById(R.id.author_time);
-            mCommentText = (TextView) view.findViewById(R.id.comment_text);
-        }
     }
 }

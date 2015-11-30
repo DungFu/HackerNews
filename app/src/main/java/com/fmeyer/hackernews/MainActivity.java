@@ -3,7 +3,6 @@ package com.fmeyer.hackernews;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentTransaction;
 import android.support.design.widget.NavigationView;
 import android.support.v4.view.GravityCompat;
@@ -17,13 +16,14 @@ import android.view.MenuItem;
 
 import com.firebase.client.Firebase;
 import com.fmeyer.hackernews.models.Item;
+import com.fmeyer.hackernews.views.listeners.StoryInteractionListener;
 
 import java.util.HashMap;
 import java.util.Map;
 
 
 public class MainActivity extends AppCompatActivity
-        implements NavigationView.OnNavigationItemSelectedListener, StoriesFragment.OnListFragmentInteractionListener {
+        implements NavigationView.OnNavigationItemSelectedListener, StoryInteractionListener {
 
     Map<String, StoriesFragment> mStoriesFragment = new HashMap<>();
 
@@ -158,9 +158,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public void onListFragmentInteraction(
-            Item item,
-            StoriesFragment.CLICK_INTERACTION_TYPE interactionType) {
+    public void onStoryInteraction(Item item, STORY_CLICK_INTERACTION_TYPE interactionType) {
         switch (interactionType) {
             case URL:
                 launchUrl(item);
@@ -169,7 +167,7 @@ public class MainActivity extends AppCompatActivity
                 launchComments(item);
                 break;
             default:
-                Log.d(MainActivity.class.getName(), "Interaction type not valid or item is null");
+                Log.d(MainActivity.class.getName(), "Interaction type not valid!");
                 break;
         }
     }

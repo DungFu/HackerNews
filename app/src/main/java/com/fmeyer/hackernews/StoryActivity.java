@@ -10,8 +10,11 @@ import android.view.MenuItem;
 
 import com.firebase.client.Firebase;
 import com.fmeyer.hackernews.models.Item;
+import com.fmeyer.hackernews.views.listeners.CommentInteractionListener;
+import com.fmeyer.hackernews.views.listeners.StoryInteractionListener;
 
-public class StoryActivity extends AppCompatActivity implements StoryFragment.OnListFragmentInteractionListener {
+public class StoryActivity extends AppCompatActivity
+        implements StoryInteractionListener, CommentInteractionListener {
 
     private Item mStoryItem;
 
@@ -66,7 +69,12 @@ public class StoryActivity extends AppCompatActivity implements StoryFragment.On
     }
 
     @Override
-    public void onListFragmentInteraction(Item item) {
+    public void onStoryInteraction(Item item, STORY_CLICK_INTERACTION_TYPE interactionType) {
         launchUrl(item);
+    }
+
+    @Override
+    public void onCommentInteraction(Item item) {
+        // do nothing
     }
 }

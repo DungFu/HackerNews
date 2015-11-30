@@ -1,35 +1,26 @@
 package com.fmeyer.hackernews;
 
-import android.graphics.PorterDuff;
 import android.support.v7.widget.RecyclerView;
-import android.text.format.DateUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.ProgressBar;
-import android.widget.TextView;
 
-import com.fmeyer.hackernews.StoriesFragment.OnListFragmentInteractionListener;
-import com.fmeyer.hackernews.models.Item;
 import com.fmeyer.hackernews.models.ItemWrapper;
+import com.fmeyer.hackernews.views.binders.ViewBinderStory;
+import com.fmeyer.hackernews.views.holders.ViewHolderStory;
+import com.fmeyer.hackernews.views.listeners.StoryInteractionListener;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * {@link RecyclerView.Adapter} that can display a {@link Item} and makes a call to the
- * specified {@link OnListFragmentInteractionListener}.
- */
 public class StoriesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     private final List<ItemWrapper> mValues = new ArrayList<>();
-    private final OnListFragmentInteractionListener mListener;
+    private final StoryInteractionListener mStoryListener;
 
-    public StoriesAdapter(OnListFragmentInteractionListener listener) {
-        mListener = listener;
+    public StoriesAdapter(StoryInteractionListener storyListener) {
+        mStoryListener = storyListener;
     }
 
     public void addStory(ItemWrapper itemWrapper) {
@@ -113,8 +104,14 @@ public class StoriesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
     public void notifyMoveStory(int oldPosition, ItemWrapper itemWrapper) {
         int index = getPositionForItemWrapper(itemWrapper);
         if (oldPosition != -1 && index != -1 && oldPosition != index) {
-            notifyItemRemoved(oldPosition);
-            notifyItemInserted(index);
+            if (index > oldPosition) {
+                // only actually move the item when it is moving to a later position
+                notifyItemMoved(oldPosition, index);
+            } else {
+                // remove the item and re-add it when it is moving to an earlier position
+                notifyItemRemoved(oldPosition);
+                notifyItemInserted(index);
+            }
         }
     }
 
@@ -134,49 +131,8 @@ public class StoriesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
     public void onBindViewHolder(final RecyclerView.ViewHolder holder, int position) {
         final ViewHolderStory holderStory = (ViewHolderStory) holder;
         ItemWrapper itemWrapper = getItemWrapperFromPosition(position);
-        Item item;
         if (itemWrapper != null && itemWrapper.shouldShow()) {
-            item = itemWrapper.getItem();
-            holderStory.mItem = item;
-            holderStory.mCommentsView.setText(Integer.toString(item.getDescendants()));
-            holderStory.mTitleView.setText(item.getTitle());
-            holderStory.mSubtitleView.setText(
-                    String.format(
-                            holderStory.mView.getResources().getString(R.string.post_subtitle),
-                            Integer.toString(item.getScore()),
-                            item.getBy(),
-                            DateUtils.getRelativeTimeSpanString(
-                                    (long) item.getTime() * (long) 1000)));
-            holderStory.mCommentsImageView.getDrawable().setColorFilter(
-                    holderStory.mView.getResources().getColor(R.color.mediumGrey),
-                    PorterDuff.Mode.SRC_ATOP);
-            holderStory.mView.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    if (mListener != null) {
-                        mListener.onListFragmentInteraction(
-                                holderStory.mItem,
-                                StoriesFragment.CLICK_INTERACTION_TYPE.URL);
-                    }
-                }
-            });
-            holderStory.mCommentsContainer.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    if (mListener != null) {
-                        mListener.onListFragmentInteraction(
-                                holderStory.mItem,
-                                StoriesFragment.CLICK_INTERACTION_TYPE.COMMENTS);
-                    }
-                }
-            });
-        } else {
-            holderStory.mItem = null;
-            holderStory.mCommentsView.setText("");
-            holderStory.mTitleView.setText("");
-            holderStory.mSubtitleView.setText("");
-            holderStory.mView.setOnClickListener(null);
-            holderStory.mCommentsContainer.setOnClickListener(null);
+            ViewBinderStory.bind(holderStory, mStoryListener, itemWrapper.getItem(), true);
         }
     }
 
@@ -187,25 +143,5 @@ public class StoriesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
             size += mValues.get(i).shouldShow() ? 1 : 0;
         }
         return size;
-    }
-
-    public class ViewHolderStory extends RecyclerView.ViewHolder {
-        public final View mView;
-        public final LinearLayout mCommentsContainer;
-        public final ImageView mCommentsImageView;
-        public final TextView mCommentsView;
-        public final TextView mTitleView;
-        public final TextView mSubtitleView;
-        public Item mItem;
-
-        public ViewHolderStory(View view) {
-            super(view);
-            mView = view;
-            mCommentsContainer = (LinearLayout) view.findViewById(R.id.comments_container);
-            mCommentsImageView = (ImageView) view.findViewById(R.id.comments_image);
-            mCommentsView = (TextView) view.findViewById(R.id.comments);
-            mTitleView = (TextView) view.findViewById(R.id.title);
-            mSubtitleView = (TextView) view.findViewById(R.id.subtitle);
-        }
     }
 }

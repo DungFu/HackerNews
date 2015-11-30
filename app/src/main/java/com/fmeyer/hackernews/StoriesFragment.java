@@ -23,6 +23,7 @@ import com.fmeyer.hackernews.db.ItemDb;
 import com.fmeyer.hackernews.db.StoriesDb;
 import com.fmeyer.hackernews.models.Item;
 import com.fmeyer.hackernews.models.ItemWrapper;
+import com.fmeyer.hackernews.views.listeners.StoryInteractionListener;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,21 +34,13 @@ import java.util.Set;
 
 /**
  * A fragment representing a list of Items.
- * <p/>
- * Activities containing this fragment MUST implement the {@link OnListFragmentInteractionListener}
- * interface.
  */
 public class StoriesFragment extends Fragment {
-
-    public static enum CLICK_INTERACTION_TYPE {
-        URL,
-        COMMENTS
-    }
 
     private static final String ARG_FILTER_TYPE = "filter_type";
 
     private String mFilterType = "topstories";
-    private OnListFragmentInteractionListener mListener;
+    private StoryInteractionListener mStoryListener;
     private Firebase mRef;
     private RecyclerView mRecyclerView;
     private SwipeRefreshLayout mSwipeContainer;
@@ -108,7 +101,7 @@ public class StoriesFragment extends Fragment {
         Context context = mRecyclerView.getContext();
         mLayoutManager = new LinearLayoutManager(context);
         mRecyclerView.setLayoutManager(mLayoutManager);
-        mAdapter = new StoriesAdapter(mListener);
+        mAdapter = new StoriesAdapter(mStoryListener);
         mRecyclerView.setAdapter(mAdapter);
 
         mPage = 0;
@@ -143,6 +136,7 @@ public class StoriesFragment extends Fragment {
                 mFirstPageLoaded = false;
                 mHasMorePages = true;
                 destroyEventListeners();
+                fetchStoriesFromDb();
                 fetchStoriesFromFirebase(10, mPage);
             }
         });
@@ -359,8 +353,8 @@ public class StoriesFragment extends Fragment {
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
-        if (context instanceof OnListFragmentInteractionListener) {
-            mListener = (OnListFragmentInteractionListener) context;
+        if (context instanceof StoryInteractionListener) {
+            mStoryListener = (StoryInteractionListener) context;
         } else {
             throw new RuntimeException(context.toString()
                     + " must implement OnListFragmentInteractionListener");
@@ -370,7 +364,7 @@ public class StoriesFragment extends Fragment {
     @Override
     public void onDetach() {
         super.onDetach();
-        mListener = null;
+        mStoryListener = null;
     }
 
     @Override
@@ -400,19 +394,5 @@ public class StoriesFragment extends Fragment {
         }
         mRefreshingRunnable = null;
         mSwipeContainer = null;
-    }
-
-    /**
-     * This interface must be implemented by activities that contain this
-     * fragment to allow an interaction in this fragment to be communicated
-     * to the activity and potentially other fragments contained in that
-     * activity.
-     * <p/>
-     * See the Android Training lesson <a href=
-     * "http://developer.android.com/training/basics/fragments/communicating.html"
-     * >Communicating with Other Fragments</a> for more information.
-     */
-    public interface OnListFragmentInteractionListener {
-        void onListFragmentInteraction(Item item, CLICK_INTERACTION_TYPE interactionType);
     }
 }
