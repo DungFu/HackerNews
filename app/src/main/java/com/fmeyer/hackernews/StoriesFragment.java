@@ -7,7 +7,6 @@ import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.support.v4.util.Pair;
 import android.support.v4.widget.SwipeRefreshLayout;
-import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.SparseArray;
 import android.view.LayoutInflater;
@@ -45,13 +44,14 @@ public class StoriesFragment extends Fragment {
     private Firebase mRef;
     private RecyclerView mRecyclerView;
     private SwipeRefreshLayout mSwipeContainer;
-    private LinearLayoutManager mLayoutManager;
+    private ScrollSpeedLinearLayoutManager mLayoutManager;
     private StoriesAdapter mAdapter;
     private int mPage = 0;
     private boolean mHasMorePages = true;
     private Runnable mRefreshingRunnable;
     private boolean mFirstPageLoaded = false;
     private boolean mAnimationsEnabled;
+    private int mPrevLastVisibleItemLoadMore = -10;
 
     private final Set<Pair<Firebase, ValueEventListener>> mValueEventsListeners = new HashSet<>();
     private final Map<Integer, ItemWrapper> mItemWrappers = new HashMap<>();
@@ -100,13 +100,14 @@ public class StoriesFragment extends Fragment {
 
         // Set the adapter
         Context context = mRecyclerView.getContext();
-        mLayoutManager = new LinearLayoutManager(context);
+        mLayoutManager = new ScrollSpeedLinearLayoutManager(context);
         mRecyclerView.setLayoutManager(mLayoutManager);
         mAdapter = new StoriesAdapter(mStoryListener);
         mRecyclerView.setAdapter(mAdapter);
 
         mPage = 0;
         mFirstPageLoaded = false;
+        mPrevLastVisibleItemLoadMore = -10;
 
         mRef = new Firebase("https://hacker-news.firebaseio.com/v0/");
         fetchStoriesFromDb();
@@ -118,14 +119,17 @@ public class StoriesFragment extends Fragment {
             public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
                 super.onScrolled(recyclerView, dx, dy);
 
-                int lastVisiblePlusBuffer = mLayoutManager.findLastVisibleItemPosition() +
-                        LOAD_MORE_ITEMS_BUFFER_SIZE;
+                int lastVisibleItemPosition = mLayoutManager.findLastVisibleItemPosition();
 
-                if (mHasMorePages &&
+                int lastVisiblePlusBuffer = lastVisibleItemPosition + LOAD_MORE_ITEMS_BUFFER_SIZE;
+
+                if (mPrevLastVisibleItemLoadMore + 5 < lastVisibleItemPosition &&
+                    mHasMorePages &&
                     lastVisiblePlusBuffer >= mLayoutManager.getItemCount() &&
                     mFirstPageLoaded) {
                     mPage++;
                     fetchStoriesFromFirebase(10, mPage);
+                    mPrevLastVisibleItemLoadMore = lastVisibleItemPosition;
                 }
             }
         });
@@ -139,6 +143,7 @@ public class StoriesFragment extends Fragment {
                 mPage = 0;
                 mFirstPageLoaded = false;
                 mHasMorePages = true;
+                mPrevLastVisibleItemLoadMore = -10;
                 destroyEventListeners();
                 fetchStoriesFromDb();
                 fetchStoriesFromFirebase(10, mPage);
@@ -248,6 +253,9 @@ public class StoriesFragment extends Fragment {
                                 storyIdsDb.contains(itemWrapper.getItem().getId())) {
                             int newPosition = storyIdsDb.indexOf(pair.getKey());
                             mAdapter.moveStory(itemWrapper, newPosition);
+                            if (newPosition == 0) {
+                                mLayoutManager.smoothScrollToPosition(mRecyclerView, null, 0);
+                            }
                         }
                     }
 
@@ -334,6 +342,7 @@ public class StoriesFragment extends Fragment {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 Item item = dataSnapshot.getValue(Item.class);
+                boolean wasWrapperShowing = itemWrapper.shouldShow();
                 if (item != null && shouldStoreInDb) {
                     ItemDb.createOrUpdateFromItem(item);
                 }
@@ -341,6 +350,9 @@ public class StoriesFragment extends Fragment {
                 mLoadingStories.remove(itemWrapper);
                 if (mLoadingStories.isEmpty()) {
                     setRefreshingState(false);
+                }
+                if (!wasWrapperShowing && mAdapter.getPositionForItemWrapper(itemWrapper) == 0) {
+                    mLayoutManager.smoothScrollToPosition(mRecyclerView, null, 0);
                 }
             }
 

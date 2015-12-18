@@ -40,9 +40,11 @@ public class StoriesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
     public void moveStory(ItemWrapper itemWrapper, int newPosition) {
         if (mValues.contains(itemWrapper)) {
             int oldPosition = getPositionForItemWrapper(itemWrapper);
-            mValues.remove(itemWrapper);
-            mValues.add(newPosition, itemWrapper);
-            notifyMoveStory(oldPosition, itemWrapper);
+            if (oldPosition != newPosition) {
+                mValues.remove(itemWrapper);
+                mValues.add(newPosition, itemWrapper);
+                notifyMoveStory(oldPosition, itemWrapper);
+            }
         } else {
             Log.e(StoriesAdapter.class.getName(), "Tried to move story that is not in adapter!");
         }
@@ -104,14 +106,7 @@ public class StoriesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
     public void notifyMoveStory(int oldPosition, ItemWrapper itemWrapper) {
         int index = getPositionForItemWrapper(itemWrapper);
         if (oldPosition != -1 && index != -1 && oldPosition != index) {
-            if (index > oldPosition) {
-                // only actually move the item when it is moving to a later position
-                notifyItemMoved(oldPosition, index);
-            } else {
-                // remove the item and re-add it when it is moving to an earlier position
-                notifyItemRemoved(oldPosition);
-                notifyItemInserted(index);
-            }
+            notifyItemMoved(oldPosition, index);
         }
     }
 
