@@ -21,7 +21,7 @@
             android:layout_height="match_parent"
             app:layoutManager="LinearLayoutManager"
             tools:context="com.fmeyer.hackernews.StoriesFragment"
-            tools:listitem="@layout/fragment_stories"
+            tools:listitem="@layout/fragment_story"
             app:layout_behavior="@string/appbar_scrolling_view_behavior"
             android:clipToPadding="false"
             />

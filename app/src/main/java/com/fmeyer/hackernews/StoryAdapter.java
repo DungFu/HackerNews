@@ -167,7 +167,7 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         switch (viewType) {
             case STORY_HEADER_VIEW_TYPE:
                 View viewStory = LayoutInflater.from(parent.getContext())
-                        .inflate(R.layout.fragment_stories_white_background, parent, false);
+                        .inflate(R.layout.fragment_story_above_comments, parent, false);
                 return new ViewHolderStory(viewStory);
             case COMMENT_VIEW_TYPE:
             default:

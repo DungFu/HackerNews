@@ -118,7 +118,7 @@ public class StoriesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         View viewStory = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.fragment_stories, parent, false);
+                .inflate(R.layout.fragment_story, parent, false);
         return new ViewHolderStory(viewStory);
     }
 

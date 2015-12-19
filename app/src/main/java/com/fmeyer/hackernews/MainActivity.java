@@ -25,7 +25,10 @@ import java.util.Map;
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, StoryInteractionListener {
 
+    static final String SAVED_TAB_EXTRA = "saved_tab_extra";
+
     Map<String, StoriesFragment> mStoriesFragment = new HashMap<>();
+    String mCurrentTab = "topstories";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,8 +40,12 @@ public class MainActivity extends AppCompatActivity
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
+        if (savedInstanceState != null) {
+            mCurrentTab = savedInstanceState.getString(SAVED_TAB_EXTRA, "topstories");
+        }
+
         FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
-        ft.replace(R.id.content_main_placeholder, createOrGetFragmentFromFilterType("topstories"));
+        ft.replace(R.id.content_main_placeholder, createOrGetFragmentFromFilterType(mCurrentTab));
         ft.commit();
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
@@ -52,8 +59,14 @@ public class MainActivity extends AppCompatActivity
 
         navigationView.setCheckedItem(R.id.nav_frontpage);
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setTitle("Top Stories");
+            getSupportActionBar().setTitle(getTabNameFromType(mCurrentTab));
         }
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle savedInstanceState) {
+        savedInstanceState.putString(SAVED_TAB_EXTRA, mCurrentTab);
+        super.onSaveInstanceState(savedInstanceState);
     }
 
     @Override
@@ -90,37 +103,47 @@ public class MainActivity extends AppCompatActivity
         return super.onOptionsItemSelected(item);
     }
 
+    private String getTabNameFromType(String tabType) {
+        if (tabType.equals("topstories")) {
+            return "Top Stories";
+        } else if (tabType.equals("newstories")) {
+            return "New Stories";
+        } else if (tabType.equals("showstories")) {
+            return "Show Stories";
+        } else if (tabType.equals("askstories")) {
+            return "Show Stories";
+        } else if (tabType.equals("jobstories")) {
+            return "Job Stories";
+        } else {
+            return "";
+        }
+    }
+
     @SuppressWarnings("StatementWithEmptyBody")
     @Override
     public boolean onNavigationItemSelected(MenuItem item) {
         // Handle navigation view item clicks here.
         int id = item.getItemId();
 
-        String filterType = "topstories";
-        String title = "Top Stories";
+        mCurrentTab = "topstories";
         if (id == R.id.nav_frontpage) {
-            filterType = "topstories";
-            title = "Top Stories";
+            mCurrentTab = "topstories";
         } else if (id == R.id.nav_new) {
-            filterType = "newstories";
-            title = "New Stories";
+            mCurrentTab = "newstories";
         } else if (id == R.id.nav_show) {
-            filterType = "showstories";
-            title = "Show Stories";
+            mCurrentTab = "showstories";
         } else if (id == R.id.nav_ask) {
-            filterType = "askstories";
-            title = "Ask Stories";
+            mCurrentTab = "askstories";
         } else if (id == R.id.nav_jobs) {
-            filterType = "jobstories";
-            title = "Job Stories";
+            mCurrentTab = "jobstories";
         }
 
         FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
-        ft.replace(R.id.content_main_placeholder, createOrGetFragmentFromFilterType(filterType));
+        ft.replace(R.id.content_main_placeholder, createOrGetFragmentFromFilterType(mCurrentTab));
         ft.commit();
 
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setTitle(title);
+            getSupportActionBar().setTitle(getTabNameFromType(mCurrentTab));
         }
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
