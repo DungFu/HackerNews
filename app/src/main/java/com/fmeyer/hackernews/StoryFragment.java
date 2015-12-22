@@ -21,6 +21,7 @@ import com.fmeyer.hackernews.models.Item;
 import com.fmeyer.hackernews.models.ItemCommentWrapper;
 import com.fmeyer.hackernews.views.listeners.CommentInteractionListener;
 import com.fmeyer.hackernews.views.listeners.StoryInteractionListener;
+import com.fmeyer.hackernews.views.listeners.StoryTextInteractionListener;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -31,6 +32,7 @@ public class StoryFragment extends Fragment {
 
     private Item mStoryItem;
     private StoryInteractionListener mStoryListener;
+    private StoryTextInteractionListener mStoryTextListener;
     private CommentInteractionListener mCommentListener;
     private RecyclerView mRecyclerView;
     private SwipeRefreshLayout mSwipeContainer;
@@ -86,7 +88,7 @@ public class StoryFragment extends Fragment {
         Context context = mRecyclerView.getContext();
         mLayoutManager = new LinearLayoutManager(context);
         mRecyclerView.setLayoutManager(mLayoutManager);
-        mAdapter = new StoryAdapter(mStoryListener, mCommentListener);
+        mAdapter = new StoryAdapter(mStoryListener, mStoryTextListener, mCommentListener);
         mRecyclerView.setAdapter(mAdapter);
 
         mAdapter.setMainStory(mStoryItem);
@@ -204,8 +206,11 @@ public class StoryFragment extends Fragment {
     @Override
     public void onAttach(Context context) {
         super.onAttach(context);
-        if (context instanceof StoryInteractionListener && context instanceof CommentInteractionListener) {
+        if (context instanceof StoryInteractionListener &&
+            context instanceof StoryTextInteractionListener &&
+            context instanceof CommentInteractionListener) {
             mStoryListener = (StoryInteractionListener) context;
+            mStoryTextListener = (StoryTextInteractionListener) context;
             mCommentListener = (CommentInteractionListener) context;
         } else {
             throw new RuntimeException(context.toString()
@@ -217,6 +222,7 @@ public class StoryFragment extends Fragment {
     public void onDetach() {
         super.onDetach();
         mStoryListener = null;
+        mStoryTextListener = null;
         mCommentListener = null;
     }
 }

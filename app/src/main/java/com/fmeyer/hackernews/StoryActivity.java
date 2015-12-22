@@ -12,9 +12,10 @@ import com.firebase.client.Firebase;
 import com.fmeyer.hackernews.models.Item;
 import com.fmeyer.hackernews.views.listeners.CommentInteractionListener;
 import com.fmeyer.hackernews.views.listeners.StoryInteractionListener;
+import com.fmeyer.hackernews.views.listeners.StoryTextInteractionListener;
 
 public class StoryActivity extends AppCompatActivity
-        implements StoryInteractionListener, CommentInteractionListener {
+        implements StoryInteractionListener, StoryTextInteractionListener, CommentInteractionListener {
 
     private Item mStoryItem;
 
@@ -71,6 +72,11 @@ public class StoryActivity extends AppCompatActivity
     @Override
     public void onStoryInteraction(Item item, STORY_CLICK_INTERACTION_TYPE interactionType) {
         launchUrl(item);
+    }
+
+    @Override
+    public void onStoryTextInteraction(Item item) {
+        // do nothing
     }
 
     @Override
