@@ -3,7 +3,7 @@ package com.fmeyer.hackernews;
 public class Utils {
 
     public static CharSequence trim(CharSequence s) {
-        return trim(s, 0, s.length() - 1);
+        return trim(s, 0, s.length());
     }
 
     private static CharSequence trim(CharSequence s, int start, int end) {
