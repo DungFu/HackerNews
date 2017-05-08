@@ -8,7 +8,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.MenuItem;
 
-import com.firebase.client.Firebase;
 import com.fmeyer.hackernews.models.Item;
 import com.fmeyer.hackernews.views.listeners.CommentInteractionListener;
 import com.fmeyer.hackernews.views.listeners.StoryInteractionListener;
@@ -24,8 +23,6 @@ public class StoryActivity extends AppCompatActivity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_story);
         setupActionBar();
-
-        Firebase.setAndroidContext(this);
 
         if (getIntent().getExtras() != null) {
             mStoryItem = getIntent().getExtras().getParcelable(Constants.EXTRA_STORY_ITEM);

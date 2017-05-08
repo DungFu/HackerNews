@@ -1,0 +1,23 @@
+{
+  "project_info": {
+    "project_id": "firebase-hacker-news",
+    "project_number": "0",
+    "name": "Hackernews Android App",
+    "firebase_url": "https://hacker-news.firebaseio.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "FILL_IN",
+        "android_client_info": {
+          "package_name": "com.fmeyer.hackernews"
+        }
+      },
+      "api_key": [
+        {
+          "current_key": "FILL_IN"
+        }
+      ]
+    }
+  ]
+}

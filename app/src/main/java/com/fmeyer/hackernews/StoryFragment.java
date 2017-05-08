@@ -12,16 +12,17 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-import com.firebase.client.DataSnapshot;
-import com.firebase.client.Firebase;
-import com.firebase.client.FirebaseError;
-import com.firebase.client.Query;
-import com.firebase.client.ValueEventListener;
 import com.fmeyer.hackernews.models.Item;
 import com.fmeyer.hackernews.models.ItemCommentWrapper;
 import com.fmeyer.hackernews.views.listeners.CommentInteractionListener;
 import com.fmeyer.hackernews.views.listeners.StoryInteractionListener;
 import com.fmeyer.hackernews.views.listeners.StoryTextInteractionListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.Query;
+import com.google.firebase.database.ValueEventListener;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -124,7 +125,7 @@ public class StoryFragment extends Fragment {
     }
 
     private void fetchStory(String id) {
-        Firebase ref = new Firebase("https://hacker-news.firebaseio.com/v0/");
+        DatabaseReference ref = FirebaseDatabase.getInstance().getReference();
         ref.child("item").child(id).addListenerForSingleValueEvent(
                 new ValueEventListener() {
                     @Override
@@ -138,7 +139,7 @@ public class StoryFragment extends Fragment {
                     }
 
                     @Override
-                    public void onCancelled(FirebaseError firebaseError) {
+                    public void onCancelled(DatabaseError firebaseError) {
                     }
                 });
     }
@@ -147,7 +148,7 @@ public class StoryFragment extends Fragment {
             final ItemCommentWrapper parentWrapper,
             Item item,
             final int depth) {
-        Firebase ref = new Firebase("https://hacker-news.firebaseio.com/v0/");
+        DatabaseReference ref = FirebaseDatabase.getInstance().getReference();
         if (item == null || item.getKids() == null || item.getKids().isEmpty()) {
             return;
         }
@@ -196,7 +197,7 @@ public class StoryFragment extends Fragment {
                 }
 
                 @Override
-                public void onCancelled(FirebaseError firebaseError) {
+                public void onCancelled(DatabaseError firebaseError) {
                 }
             });
         }

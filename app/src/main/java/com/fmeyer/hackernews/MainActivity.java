@@ -14,7 +14,6 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 
-import com.firebase.client.Firebase;
 import com.fmeyer.hackernews.models.Item;
 import com.fmeyer.hackernews.views.listeners.StoryInteractionListener;
 
@@ -33,8 +32,6 @@ public class MainActivity extends AppCompatActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        Firebase.setAndroidContext(this);
 
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);

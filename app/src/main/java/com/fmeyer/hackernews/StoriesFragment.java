@@ -13,16 +13,17 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-import com.firebase.client.DataSnapshot;
-import com.firebase.client.Firebase;
-import com.firebase.client.FirebaseError;
-import com.firebase.client.Query;
-import com.firebase.client.ValueEventListener;
 import com.fmeyer.hackernews.db.ItemDb;
 import com.fmeyer.hackernews.db.StoriesDb;
 import com.fmeyer.hackernews.models.Item;
 import com.fmeyer.hackernews.models.ItemWrapper;
 import com.fmeyer.hackernews.views.listeners.StoryInteractionListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.Query;
+import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -41,7 +42,7 @@ public class StoriesFragment extends Fragment {
 
     private String mFilterType = "topstories";
     private StoryInteractionListener mStoryListener;
-    private Firebase mRef;
+    private DatabaseReference mRef;
     private RecyclerView mRecyclerView;
     private SwipeRefreshLayout mSwipeContainer;
     private ScrollSpeedLinearLayoutManager mLayoutManager;
@@ -53,7 +54,8 @@ public class StoriesFragment extends Fragment {
     private boolean mAnimationsEnabled;
     private int mPrevLastVisibleItemLoadMore = -10;
 
-    private final Set<Pair<Firebase, ValueEventListener>> mValueEventsListeners = new HashSet<>();
+    private final Set<Pair<DatabaseReference, ValueEventListener>> mValueEventsListeners =
+            new HashSet<>();
     private final Map<Integer, ItemWrapper> mItemWrappers = new HashMap<>();
     private final Set<ItemWrapper> mLoadingStories = new HashSet<>();
 
@@ -109,7 +111,7 @@ public class StoriesFragment extends Fragment {
         mFirstPageLoaded = false;
         mPrevLastVisibleItemLoadMore = -10;
 
-        mRef = new Firebase("https://hacker-news.firebaseio.com/v0/");
+        mRef = FirebaseDatabase.getInstance().getReference();
         fetchStoriesFromDb();
         fetchStoriesFromFirebase(10, mPage);
         setRefreshingState(true);
@@ -159,13 +161,13 @@ public class StoriesFragment extends Fragment {
     }
 
     private void removeEventListeners() {
-        for (Pair<Firebase, ValueEventListener> pair : mValueEventsListeners) {
+        for (Pair<DatabaseReference, ValueEventListener> pair : mValueEventsListeners) {
             pair.first.removeEventListener(pair.second);
         }
     }
 
     private void reAddEventListeners() {
-        for (Pair<Firebase, ValueEventListener> pair : mValueEventsListeners) {
+        for (Pair<DatabaseReference, ValueEventListener> pair : mValueEventsListeners) {
             pair.first.addValueEventListener(pair.second);
         }
     }
@@ -279,7 +281,7 @@ public class StoriesFragment extends Fragment {
             }
 
             @Override
-            public void onCancelled(FirebaseError firebaseError) {
+            public void onCancelled(DatabaseError firebaseError) {
             }
         });
     }
@@ -357,10 +359,10 @@ public class StoriesFragment extends Fragment {
             }
 
             @Override
-            public void onCancelled(FirebaseError firebaseError) {
+            public void onCancelled(DatabaseError firebaseError) {
             }
         };
-        Firebase ref = mRef.child("item").child(itemId.toString());
+        DatabaseReference ref = mRef.child("item").child(itemId.toString());
         ref.addValueEventListener(listener);
         mValueEventsListeners.add(Pair.create(ref, listener));
     }
