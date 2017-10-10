@@ -13,6 +13,6 @@ public class ItemWrapper {
     }
 
     public boolean shouldShow() {
-        return item != null && !item.isDeleted() && !item.isDead();
+        return item != null && !item.getDeleted() && !item.getDead();
     }
 }

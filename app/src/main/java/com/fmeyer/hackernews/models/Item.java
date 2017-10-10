@@ -1,186 +1,107 @@
 package com.fmeyer.hackernews.models;
 
-import android.os.Parcel;
+import android.databinding.Bindable;
+import android.databinding.Observable;
 import android.os.Parcelable;
 
-import com.fmeyer.hackernews.db.ItemDb;
+import io.requery.CascadeAction;
+import io.requery.Entity;
+import io.requery.Key;
+import io.requery.ManyToOne;
+import io.requery.OneToMany;
+import io.requery.Persistable;
+import io.requery.query.MutableResult;
 
-import java.util.ArrayList;
+@Entity
+public interface Item extends Observable, Parcelable, Persistable {
 
-public class Item implements Parcelable {
+    @Bindable
+    @Key
+    int getId();
 
-    int id;
-    boolean deleted;
-    String type;
-    String by;
-    int time;
-    String text;
-    boolean dead;
-    int parent;
-    ArrayList<Integer> kids;
-    String url;
-    int score;
-    String title;
-    ArrayList<Integer> parts;
-    int descendants;
+    void setId(int id);
 
-    public Item() {
+    @Bindable
+    boolean getDeleted();
+
+    void setDeleted(boolean deleted);
+
+    @Bindable
+    String getType();
+
+    void setType(String type);
+
+    @Bindable
+    String getBy();
+
+    void setBy(String by);
+
+    @Bindable
+    int getTime();
+
+    void setTime(int time);
+
+    @Bindable
+    String getText();
+
+    void setText(String text);
+
+    @Bindable
+    boolean getDead();
+
+    void setDead(boolean dead);
+
+    @Bindable
+    @ManyToOne(cascade = {CascadeAction.DELETE, CascadeAction.SAVE})
+    Item getParent();
+
+    void setParent(Item parent);
+
+    @OneToMany(mappedBy = "parent", cascade = {CascadeAction.DELETE, CascadeAction.SAVE})
+    MutableResult<Item> getKids();
+
+    @Bindable
+    String getUrl();
+
+    void setUrl(String url);
+
+    @Bindable
+    int getScore();
+
+    void setScore(int score);
+
+    @Bindable
+    String getTitle();
+
+    void setTitle(String title);
+
+    @OneToMany(mappedBy = "parent", cascade = {CascadeAction.DELETE, CascadeAction.SAVE})
+    MutableResult<Item> getParts();
+
+    @Bindable
+    int getDescendants();
+
+    void setDescendants(int descendants);
+
+    @Bindable
+    boolean getCollapsed();
+
+    void setCollapsed(boolean collapsed);
+
+    @Bindable
+    int getDepth();
+
+    void setDepth(int depth);
+
+    default public boolean shouldShow() {
+        return !this.getDeleted() && !this.getDead();
     }
 
-    public Item(ItemDb itemDb) {
-        this.id = itemDb.getItemId();
-        this.deleted = itemDb.isDeleted();
-        this.type = itemDb.getType();
-        this.by = itemDb.getBy();
-        this.time = itemDb.getTime();
-        this.text = itemDb.getText();
-        this.dead = itemDb.isDead();
-        this.parent = itemDb.getParent();
-        this.kids = itemDb.getKids();
-        this.url = itemDb.getUrl();
-        this.score = itemDb.getScore();
-        this.title = itemDb.getTitle();
-        this.parts = itemDb.getParts();
-        this.descendants = itemDb.getDescendants();
+    default public int getSize() {
+        return (shouldShow() ? 1 : 0) + getInnerSize();
     }
 
-    @Override
-    public String toString() {
-        return "id:" + id + "\n" +
-                "type:" + type + "\n" +
-                "by:" + by + "\n" +
-                "time:" + time + "\n" +
-                "url:" + url + "\n" +
-                "score:" + score + "\n" +
-                "title:" + title;
+    default public int getInnerSize() {
+        return getCollapsed() ? 0 : getDescendants();
     }
-
-    public int getId() {
-        return id;
-    }
-
-    public boolean isDeleted() {
-        return deleted;
-    }
-
-    public String getType() {
-        return type;
-    }
-
-    public String getBy() {
-        return by;
-    }
-
-    public int getTime() {
-        return time;
-    }
-
-    public String getText() {
-        return text;
-    }
-
-    public boolean isDead() {
-        return dead;
-    }
-
-    public int getParent() {
-        return parent;
-    }
-
-    public ArrayList<Integer> getKids() {
-        return kids;
-    }
-
-    public String getUrl() {
-        return url;
-    }
-
-    public int getScore() {
-        return score;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public ArrayList<Integer> getParts() {
-        return parts;
-    }
-
-    public int getDescendants() {
-        return descendants;
-    }
-
-    protected Item(Parcel in) {
-        id = in.readInt();
-        deleted = in.readByte() != 0x00;
-        type = in.readString();
-        by = in.readString();
-        time = in.readInt();
-        text = in.readString();
-        dead = in.readByte() != 0x00;
-        parent = in.readInt();
-        if (in.readByte() == 0x01) {
-            kids = new ArrayList<Integer>();
-            in.readList(kids, Integer.class.getClassLoader());
-        } else {
-            kids = null;
-        }
-        url = in.readString();
-        score = in.readInt();
-        title = in.readString();
-        if (in.readByte() == 0x01) {
-            parts = new ArrayList<Integer>();
-            in.readList(parts, Integer.class.getClassLoader());
-        } else {
-            parts = null;
-        }
-        descendants = in.readInt();
-    }
-
-    @Override
-    public int describeContents() {
-        return 0;
-    }
-
-    @Override
-    public void writeToParcel(Parcel dest, int flags) {
-        dest.writeInt(id);
-        dest.writeByte((byte) (deleted ? 0x01 : 0x00));
-        dest.writeString(type);
-        dest.writeString(by);
-        dest.writeInt(time);
-        dest.writeString(text);
-        dest.writeByte((byte) (dead ? 0x01 : 0x00));
-        dest.writeInt(parent);
-        if (kids == null) {
-            dest.writeByte((byte) (0x00));
-        } else {
-            dest.writeByte((byte) (0x01));
-            dest.writeList(kids);
-        }
-        dest.writeString(url);
-        dest.writeInt(score);
-        dest.writeString(title);
-        if (parts == null) {
-            dest.writeByte((byte) (0x00));
-        } else {
-            dest.writeByte((byte) (0x01));
-            dest.writeList(parts);
-        }
-        dest.writeInt(descendants);
-    }
-
-    @SuppressWarnings("unused")
-    public static final Parcelable.Creator<Item> CREATOR = new Parcelable.Creator<Item>() {
-        @Override
-        public Item createFromParcel(Parcel in) {
-            return new Item(in);
-        }
-
-        @Override
-        public Item[] newArray(int size) {
-            return new Item[size];
-        }
-    };
 }
