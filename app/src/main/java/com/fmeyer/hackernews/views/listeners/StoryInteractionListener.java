@@ -1,6 +1,6 @@
 package com.fmeyer.hackernews.views.listeners;
 
-import com.fmeyer.hackernews.models.Item;
+import com.fmeyer.hackernews.HackerNewsStoriesQuery.Story;
 
 public interface StoryInteractionListener {
 
@@ -9,5 +9,5 @@ public interface StoryInteractionListener {
         COMMENTS
     }
 
-    void onStoryInteraction(Item item, STORY_CLICK_INTERACTION_TYPE interactionType);
+    void onStoryInteraction(Story story, STORY_CLICK_INTERACTION_TYPE interactionType);
 }

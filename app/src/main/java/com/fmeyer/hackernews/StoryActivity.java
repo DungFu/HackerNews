@@ -8,8 +8,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.MenuItem;
 
-import com.firebase.client.Firebase;
-import com.fmeyer.hackernews.models.Item;
+import com.fmeyer.hackernews.HackerNewsStoriesQuery.Story;
 import com.fmeyer.hackernews.views.listeners.CommentInteractionListener;
 import com.fmeyer.hackernews.views.listeners.StoryInteractionListener;
 import com.fmeyer.hackernews.views.listeners.StoryTextInteractionListener;
@@ -17,22 +16,18 @@ import com.fmeyer.hackernews.views.listeners.StoryTextInteractionListener;
 public class StoryActivity extends AppCompatActivity
         implements StoryInteractionListener, StoryTextInteractionListener, CommentInteractionListener {
 
-    private Item mStoryItem;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_story);
         setupActionBar();
 
-        Firebase.setAndroidContext(this);
-
         if (getIntent().getExtras() != null) {
-            mStoryItem = getIntent().getExtras().getParcelable(Constants.EXTRA_STORY_ITEM);
+//            mStoryItem = getIntent().getExtras().getParcelable(Constants.EXTRA_STORY_ITEM);
         }
 
         FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
-        ft.replace(R.id.content_story_placeholder, StoryFragment.newInstance(mStoryItem));
+        ft.replace(R.id.content_story_placeholder, StoryFragment.newInstance());
         ft.commit();
 
         if (getSupportActionBar() != null) {
@@ -61,26 +56,26 @@ public class StoryActivity extends AppCompatActivity
         return super.onOptionsItemSelected(item);
     }
 
-    private void launchUrl(Item item) {
-        if (item != null && item.getUrl() != null) {
-            Uri uri = Uri.parse(item.getUrl());
+    private void launchUrl(Story story) {
+        if (story != null && story.url() != null) {
+            Uri uri = Uri.parse(story.url());
             Intent intent = new Intent(Intent.ACTION_VIEW, uri);
             startActivity(intent);
         }
     }
 
     @Override
-    public void onStoryInteraction(Item item, STORY_CLICK_INTERACTION_TYPE interactionType) {
-        launchUrl(item);
+    public void onStoryInteraction(Story story, STORY_CLICK_INTERACTION_TYPE interactionType) {
+        launchUrl(story);
     }
 
     @Override
-    public void onStoryTextInteraction(Item item) {
+    public void onStoryTextInteraction(String itemId) {
         // do nothing
     }
 
     @Override
-    public void onCommentInteraction(Item item) {
+    public void onCommentInteraction(String itemId) {
         // do nothing
     }
 }

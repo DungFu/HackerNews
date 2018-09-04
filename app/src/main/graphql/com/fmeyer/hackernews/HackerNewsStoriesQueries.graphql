@@ -1,0 +1,13 @@
+query HackerNewsStoriesQuery($category: String!, $first: Int, $after: ID) {
+    stories(category: $category, first: $first, after: $after) {
+        id
+        descendants
+        title
+        score
+        by {
+            id
+        }
+        time
+        url
+    }
+}

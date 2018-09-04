@@ -5,13 +5,12 @@ import android.view.View;
 import android.widget.TextView;
 
 import com.fmeyer.hackernews.R;
-import com.fmeyer.hackernews.models.Item;
 
 public class ViewHolderComment extends RecyclerView.ViewHolder {
     public final View mView;
     public final TextView mAuthorTimeText;
     public final TextView mCommentText;
-    public Item mItem;
+    public String itemId;
 
     public ViewHolderComment(View view) {
         super(view);

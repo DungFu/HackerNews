@@ -1,14 +1,10 @@
 package com.fmeyer.hackernews;
 
-import android.support.annotation.Nullable;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-import com.fmeyer.hackernews.models.Item;
-import com.fmeyer.hackernews.models.ItemCommentWrapper;
 import com.fmeyer.hackernews.views.binders.ViewBinderComment;
 import com.fmeyer.hackernews.views.binders.ViewBinderStory;
 import com.fmeyer.hackernews.views.binders.ViewBinderStoryText;
@@ -19,21 +15,15 @@ import com.fmeyer.hackernews.views.listeners.CommentInteractionListener;
 import com.fmeyer.hackernews.views.listeners.StoryInteractionListener;
 import com.fmeyer.hackernews.views.listeners.StoryTextInteractionListener;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     private static final int STORY_HEADER_VIEW_TYPE = 0;
     private static final int STORY_TEXT_VIEW_TYPE = 1;
     private static final int COMMENT_VIEW_TYPE = 2;
 
-    private final List<ItemCommentWrapper> mValues = new ArrayList<>();
     private final StoryInteractionListener mStoryListener;
     private final StoryTextInteractionListener mStoryTextListener;
     private final CommentInteractionListener mCommentListener;
-
-    private Item mMainStory;
 
     public StoryAdapter(
             StoryInteractionListener storyListener,
@@ -44,9 +34,10 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         mCommentListener = commentListener;
     }
 
-    public void setMainStory(Item item) {
+    /**
+
+    public void setMainStory() {
         int prevNum = getNumberHeaderItems();
-        mMainStory = item;
         int newNum = getNumberHeaderItems();
         int changeNum = Math.min(prevNum, newNum);
         if (changeNum > 0) {
@@ -170,6 +161,8 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         return null;
     }
 
+     **/
+
     @Override
     public int getItemViewType(int position) {
         if (getNumberHeaderItems() >= 1 && position == 0) {
@@ -202,38 +195,39 @@ public class StoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
 
     @Override
     public void onBindViewHolder(final RecyclerView.ViewHolder holder, int position) {
-        if (holder instanceof ViewHolderStory) {
-            final ViewHolderStory holderStory = (ViewHolderStory) holder;
-            if (mMainStory != null) {
-                ViewBinderStory.bind(holderStory, mStoryListener, mMainStory, false);
-            }
-        } else if (holder instanceof ViewHolderStoryText) {
-            final ViewHolderStoryText holderStoryText = (ViewHolderStoryText) holder;
-            if (mMainStory != null && mMainStory.getText() != null) {
-                ViewBinderStoryText.bind(holderStoryText, mStoryTextListener, mMainStory);
-            }
-        } else if (holder instanceof ViewHolderComment) {
-            final ViewHolderComment holderComment = (ViewHolderComment) holder;
-            final ItemCommentWrapper itemWrapper = getValuesItem(position - getNumberHeaderItems());
-            if (itemWrapper != null && itemWrapper.shouldShow()) {
-                ViewBinderComment.bind(this, holderComment, mCommentListener, itemWrapper);
-            }
-        }
+//        if (holder instanceof ViewHolderStory) {
+//            final ViewHolderStory holderStory = (ViewHolderStory) holder;
+//            if (mMainStory != null) {
+//                ViewBinderStory.bind(holderStory, mStoryListener, mMainStory, false);
+//            }
+//        } else if (holder instanceof ViewHolderStoryText) {
+//            final ViewHolderStoryText holderStoryText = (ViewHolderStoryText) holder;
+//            if (mMainStory != null && mMainStory.getText() != null) {
+//                ViewBinderStoryText.bind(holderStoryText, mStoryTextListener, mMainStory);
+//            }
+//        } else if (holder instanceof ViewHolderComment) {
+//            final ViewHolderComment holderComment = (ViewHolderComment) holder;
+//            final ItemCommentWrapper itemWrapper = getValuesItem(position - getNumberHeaderItems());
+//            if (itemWrapper != null && itemWrapper.shouldShow()) {
+//                ViewBinderComment.bind(this, holderComment, mCommentListener, itemWrapper);
+//            }
+//        }
     }
 
     private int getNumberHeaderItems() {
         int numItems = 0;
-        if (mMainStory != null) {
-            numItems += 1;
-            if (mMainStory.getText() != null) {
-                numItems += 1;
-            }
-        }
+//        if (mMainStory != null) {
+//            numItems += 1;
+//            if (mMainStory.getText() != null) {
+//                numItems += 1;
+//            }
+//        }
         return numItems;
     }
 
     @Override
     public int getItemCount() {
-        return getNumberHeaderItems() + getValuesSize();
+//        return getNumberHeaderItems() + getValuesSize();
+        return 0;
     }
 }

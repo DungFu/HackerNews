@@ -12,25 +12,14 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-import com.firebase.client.DataSnapshot;
-import com.firebase.client.Firebase;
-import com.firebase.client.FirebaseError;
-import com.firebase.client.Query;
-import com.firebase.client.ValueEventListener;
-import com.fmeyer.hackernews.models.Item;
-import com.fmeyer.hackernews.models.ItemCommentWrapper;
 import com.fmeyer.hackernews.views.listeners.CommentInteractionListener;
 import com.fmeyer.hackernews.views.listeners.StoryInteractionListener;
 import com.fmeyer.hackernews.views.listeners.StoryTextInteractionListener;
-
-import java.util.HashSet;
-import java.util.Set;
 
 public class StoryFragment extends Fragment {
 
     private static final String ARG_STORY_ITEM = "story_item";
 
-    private Item mStoryItem;
     private StoryInteractionListener mStoryListener;
     private StoryTextInteractionListener mStoryTextListener;
     private CommentInteractionListener mCommentListener;
@@ -41,8 +30,6 @@ public class StoryFragment extends Fragment {
     private Runnable mRefreshingRunnable;
     private boolean mAnimationsEnabled;
 
-    private final Set<ItemCommentWrapper> mLoadingComments = new HashSet<>();
-
     /**
      * Mandatory empty constructor for the fragment manager to instantiate the
      * fragment (e.g. upon screen orientation changes).
@@ -50,10 +37,9 @@ public class StoryFragment extends Fragment {
     public StoryFragment() {
     }
 
-    public static StoryFragment newInstance(Item item) {
+    public static StoryFragment newInstance() {
         StoryFragment fragment = new StoryFragment();
         Bundle args = new Bundle();
-        args.putParcelable(ARG_STORY_ITEM, item);
         fragment.setArguments(args);
         return fragment;
     }
@@ -63,7 +49,7 @@ public class StoryFragment extends Fragment {
         super.onCreate(savedInstanceState);
 
         if (getArguments() != null) {
-            mStoryItem = getArguments().getParcelable(ARG_STORY_ITEM);
+//            mStoryItem = getArguments().getParcelable(ARG_STORY_ITEM);
         }
     }
 
@@ -91,7 +77,10 @@ public class StoryFragment extends Fragment {
         mAdapter = new StoryAdapter(mStoryListener, mStoryTextListener, mCommentListener);
         mRecyclerView.setAdapter(mAdapter);
 
+        /**
+
         mAdapter.setMainStory(mStoryItem);
+
         fetchComments(null, mStoryItem, 0);
         if (mStoryItem.getDescendants() > 0) {
             setRefreshingState(true);
@@ -105,8 +94,12 @@ public class StoryFragment extends Fragment {
             }
         });
 
+         **/
+
         return view;
     }
+
+    /**
 
     private void setRefreshingState(final boolean isRefreshing) {
         if (mRefreshingRunnable != null) {
@@ -124,11 +117,11 @@ public class StoryFragment extends Fragment {
     }
 
     private void fetchStory(String id) {
-        Firebase ref = new Firebase("https://hacker-news.firebaseio.com/v0/");
+        DatabaseReference ref = FirebaseDatabase.getInstance().getReference();
         ref.child("item").child(id).addListenerForSingleValueEvent(
                 new ValueEventListener() {
                     @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                         mStoryItem = dataSnapshot.getValue(Item.class);
                         mAdapter.setMainStory(mStoryItem);
                         if (mStoryItem.getDescendants() <= 0) {
@@ -138,7 +131,7 @@ public class StoryFragment extends Fragment {
                     }
 
                     @Override
-                    public void onCancelled(FirebaseError firebaseError) {
+                    public void onCancelled(@NonNull DatabaseError databaseError) {
                     }
                 });
     }
@@ -147,7 +140,7 @@ public class StoryFragment extends Fragment {
             final ItemCommentWrapper parentWrapper,
             Item item,
             final int depth) {
-        Firebase ref = new Firebase("https://hacker-news.firebaseio.com/v0/");
+        DatabaseReference ref = FirebaseDatabase.getInstance().getReference();
         if (item == null || item.getKids() == null || item.getKids().isEmpty()) {
             return;
         }
@@ -166,7 +159,7 @@ public class StoryFragment extends Fragment {
             mLoadingComments.add(itemCommentWrapper);
             commentQuery.addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
-                public void onDataChange(DataSnapshot dataSnapshot) {
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                     Item item = dataSnapshot.getValue(Item.class);
                     boolean wasEmpty = itemCommentWrapper.getItem() == null;
                     if (item != null && !item.isDead() && !item.isDeleted()) {
@@ -196,11 +189,13 @@ public class StoryFragment extends Fragment {
                 }
 
                 @Override
-                public void onCancelled(FirebaseError firebaseError) {
+                public void onCancelled(@NonNull DatabaseError databaseError) {
                 }
             });
         }
     }
+
+     **/
 
 
     @Override

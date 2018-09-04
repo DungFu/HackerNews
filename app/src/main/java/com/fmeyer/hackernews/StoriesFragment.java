@@ -5,31 +5,21 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
-import android.support.v4.util.Pair;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.RecyclerView;
-import android.util.SparseArray;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-import com.firebase.client.DataSnapshot;
-import com.firebase.client.Firebase;
-import com.firebase.client.FirebaseError;
-import com.firebase.client.Query;
-import com.firebase.client.ValueEventListener;
-import com.fmeyer.hackernews.db.ItemDb;
-import com.fmeyer.hackernews.db.StoriesDb;
-import com.fmeyer.hackernews.models.Item;
-import com.fmeyer.hackernews.models.ItemWrapper;
+import com.apollographql.apollo.ApolloCall;
+import com.apollographql.apollo.ApolloClient;
+import com.apollographql.apollo.api.Response;
+import com.apollographql.apollo.exception.ApolloException;
+import com.fmeyer.hackernews.HackerNewsStoriesQuery.Story;
 import com.fmeyer.hackernews.views.listeners.StoryInteractionListener;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * A fragment representing a list of Items.
@@ -41,21 +31,15 @@ public class StoriesFragment extends Fragment {
 
     private String mFilterType = "topstories";
     private StoryInteractionListener mStoryListener;
-    private Firebase mRef;
     private RecyclerView mRecyclerView;
     private SwipeRefreshLayout mSwipeContainer;
     private ScrollSpeedLinearLayoutManager mLayoutManager;
     private StoriesAdapter mAdapter;
-    private int mPage = 0;
+    private ApolloClient mApolloClient;
     private boolean mHasMorePages = true;
     private Runnable mRefreshingRunnable;
-    private boolean mFirstPageLoaded = false;
     private boolean mAnimationsEnabled;
     private int mPrevLastVisibleItemLoadMore = -10;
-
-    private final Set<Pair<Firebase, ValueEventListener>> mValueEventsListeners = new HashSet<>();
-    private final Map<Integer, ItemWrapper> mItemWrappers = new HashMap<>();
-    private final Set<ItemWrapper> mLoadingStories = new HashSet<>();
 
     /**
      * Mandatory empty constructor for the fragment manager to instantiate the
@@ -105,13 +89,11 @@ public class StoriesFragment extends Fragment {
         mAdapter = new StoriesAdapter(mStoryListener);
         mRecyclerView.setAdapter(mAdapter);
 
-        mPage = 0;
-        mFirstPageLoaded = false;
-        mPrevLastVisibleItemLoadMore = -10;
+        mApolloClient = ApolloClient.builder()
+                .serverUrl("https://dungfu-hackernews-graphqlserver.glitch.me")
+                .build();
 
-        mRef = new Firebase("https://hacker-news.firebaseio.com/v0/");
-        fetchStoriesFromDb();
-        fetchStoriesFromFirebase(10, mPage);
+        fetchStories(10);
         setRefreshingState(true);
 
         mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
@@ -125,10 +107,8 @@ public class StoriesFragment extends Fragment {
 
                 if (mPrevLastVisibleItemLoadMore + 5 < lastVisibleItemPosition &&
                     mHasMorePages &&
-                    lastVisiblePlusBuffer >= mLayoutManager.getItemCount() &&
-                    mFirstPageLoaded) {
-                    mPage++;
-                    fetchStoriesFromFirebase(10, mPage);
+                    lastVisiblePlusBuffer >= mLayoutManager.getItemCount()) {
+                    fetchStories(10);
                     mPrevLastVisibleItemLoadMore = lastVisibleItemPosition;
                 }
             }
@@ -137,37 +117,13 @@ public class StoriesFragment extends Fragment {
         mSwipeContainer.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
-                mItemWrappers.clear();
-                mLoadingStories.clear();
                 mAdapter.clear();
-                mPage = 0;
-                mFirstPageLoaded = false;
                 mHasMorePages = true;
-                mPrevLastVisibleItemLoadMore = -10;
-                destroyEventListeners();
-                fetchStoriesFromDb();
-                fetchStoriesFromFirebase(10, mPage);
+                fetchStories(10);
             }
         });
 
         return view;
-    }
-
-    private void destroyEventListeners() {
-        removeEventListeners();
-        mValueEventsListeners.clear();
-    }
-
-    private void removeEventListeners() {
-        for (Pair<Firebase, ValueEventListener> pair : mValueEventsListeners) {
-            pair.first.removeEventListener(pair.second);
-        }
-    }
-
-    private void reAddEventListeners() {
-        for (Pair<Firebase, ValueEventListener> pair : mValueEventsListeners) {
-            pair.first.addValueEventListener(pair.second);
-        }
     }
 
     private void setRefreshingState(final boolean isRefreshing) {
@@ -189,182 +145,35 @@ public class StoriesFragment extends Fragment {
         }
     }
 
-    private void fetchStoriesFromDb() {
-        final StoriesDb storiesDb = StoriesDb.getStoriesDbFromFilterType(mFilterType);
-        if (storiesDb != null) {
-            for (Integer storyId : storiesDb.getStoryIds()) {
-                fetchStoryFromDb(storyId);
-            }
+    private void fetchStories(int pageSize) {
+        HackerNewsStoriesQuery.Builder builder = HackerNewsStoriesQuery.builder()
+                .category(mFilterType)
+                .first(pageSize);
+        String lastId = mAdapter.getLastId();
+        if (lastId != null) {
+            builder.after(lastId);
         }
-    }
+        mApolloClient.query(
+                builder.build()
+        ).enqueue(new ApolloCall.Callback<HackerNewsStoriesQuery.Data>() {
 
-    private void fetchStoriesFromFirebase(int pageSize, final int pageNum) {
-        final Query topStoriesQuery = mRef
-                .child(mFilterType)
-                .startAt(null, String.valueOf(pageSize*pageNum))
-                .limitToFirst(pageSize);
-        topStoriesQuery.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                boolean isFirstPage = pageNum == 0;
-                if (isFirstPage) {
-                    mFirstPageLoaded = true;
-                }
-                boolean hasData = false;
-                ArrayList<Integer> storyIdsDb = new ArrayList<>();
-                for (DataSnapshot child : dataSnapshot.getChildren()) {
-                    storyIdsDb.add(child.getValue(Integer.class));
-                }
-                StoriesDb storiesDb = StoriesDb.getStoriesDbFromFilterType(mFilterType);
-                if (isFirstPage) {
-
-                    // Add new stories
-                    for (int i = 0; i < storyIdsDb.size(); i++) {
-                        getItemWrapperFromId(storyIdsDb.get(i), i);
-                    }
-
-                    // collect list of stories that are removed in sparse array
-                    SparseArray<ItemWrapper> itemsToRemove = new SparseArray<>();
-                    Iterator itRemove = mItemWrappers.entrySet().iterator();
-                    while (itRemove.hasNext()) {
-                        Map.Entry pair = (Map.Entry) itRemove.next();
-                        ItemWrapper itemWrapper = (ItemWrapper) pair.getValue();
-                        if (itemWrapper.getItem() != null &&
-                                !storyIdsDb.contains(itemWrapper.getItem().getId())) {
-                            itemsToRemove.put((int) pair.getKey(), itemWrapper);
+            @Override public void onResponse(@NotNull final Response<HackerNewsStoriesQuery.Data> dataResponse) {
+                if (dataResponse.data() != null) {
+                    mRecyclerView.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            mAdapter.add(dataResponse.data().stories());
+                            setRefreshingState(false);
                         }
-                    }
-
-                    // remove stories that are in sparse array
-                    for (int i = 0; i < itemsToRemove.size(); i++) {
-                        Integer itemKey = itemsToRemove.keyAt(i);
-                        ItemWrapper itemWrapper = itemsToRemove.get(itemKey);
-                        mItemWrappers.remove(itemKey);
-                        mLoadingStories.remove(itemWrapper);
-                        mAdapter.removeStory(itemWrapper);
-                    }
-
-                    // Move stories are neither new nor removed
-                    Iterator itMove = mItemWrappers.entrySet().iterator();
-                    while (itMove.hasNext()) {
-                        Map.Entry pair = (Map.Entry) itMove.next();
-                        ItemWrapper itemWrapper = (ItemWrapper) pair.getValue();
-                        if (itemWrapper.getItem() != null &&
-                                storyIdsDb.contains(itemWrapper.getItem().getId())) {
-                            int newPosition = storyIdsDb.indexOf(pair.getKey());
-                            mAdapter.moveStory(itemWrapper, newPosition);
-                            if (newPosition == 0) {
-                                mLayoutManager.smoothScrollToPosition(mRecyclerView, null, 0);
-                            }
-                        }
-                    }
-
-                    // Update the database entry for this filter type
-                    if (storiesDb != null) {
-                        storiesDb.setStoryIds(storyIdsDb);
-                        storiesDb.save();
-                    } else {
-                        storiesDb = new StoriesDb(mFilterType, storyIdsDb);
-                        storiesDb.save();
-                    }
-                }
-                for (DataSnapshot child : dataSnapshot.getChildren()) {
-                    hasData = true;
-                    Integer storyId = child.getValue(Integer.class);
-                    fetchStoryFromFirebase(storyId, isFirstPage /* shouldStoreInDb */);
-                }
-                if (!hasData) {
-                    mHasMorePages = false;
+                    });
                 }
             }
 
-            @Override
-            public void onCancelled(FirebaseError firebaseError) {
+            @Override public void onFailure(@NotNull ApolloException e) {
+                Log.e("WOW", e.getMessage(), e);
             }
         });
     }
-
-    private boolean needsUiUpdate(Item oldItem, Item newItem) {
-        return oldItem == null ||
-                newItem == null ||
-                !oldItem.getTitle().equals(newItem.getTitle()) ||
-                oldItem.getDescendants() != newItem.getDescendants() ||
-                oldItem.getScore() != newItem.getScore() ||
-                !oldItem.getBy().equals(newItem.getBy()) ||
-                oldItem.getTime() != newItem.getTime();
-    }
-
-    private void updateAdapterWithNewItem(ItemWrapper itemWrapper, Item item) {
-        boolean oldShouldShow = itemWrapper.shouldShow();
-        int beforePosition = mAdapter.getPositionForItemWrapper(itemWrapper);
-        Item oldItem = itemWrapper.getItem();
-        itemWrapper.setItem(item);
-        boolean newShouldShow = itemWrapper.shouldShow();
-        if (!oldShouldShow && newShouldShow) {
-            mAdapter.notifyAddStory(itemWrapper);
-        } else if (oldShouldShow && newShouldShow) {
-            if (needsUiUpdate(oldItem, itemWrapper.getItem())) {
-                mAdapter.notifyUpdateStory(itemWrapper);
-            }
-        } else if (oldShouldShow && !newShouldShow) {
-            mAdapter.notifyRemoveStory(beforePosition);
-        }
-    }
-
-    private void fetchStoryFromDb(Integer itemId) {
-        ItemDb itemDb = ItemDb.getItemDbFromId(itemId);
-        if (itemDb != null) {
-            ItemWrapper itemWrapper = getItemWrapperFromId(itemId, -1);
-            Item item = new Item(itemDb);
-            updateAdapterWithNewItem(itemWrapper, item);
-        }
-    }
-
-    private ItemWrapper getItemWrapperFromId(Integer itemId, int position) {
-        if (mItemWrappers.containsKey(itemId)) {
-            return mItemWrappers.get(itemId);
-        } else {
-            ItemWrapper itemWrapper = new ItemWrapper();
-            mItemWrappers.put(itemId, itemWrapper);
-            if (position > -1) {
-                mAdapter.addStory(itemWrapper, position);
-            } else {
-                mAdapter.addStory(itemWrapper);
-            }
-            mLoadingStories.add(itemWrapper);
-            return itemWrapper;
-        }
-    }
-
-    private void fetchStoryFromFirebase(Integer itemId, final boolean shouldStoreInDb) {
-        final ItemWrapper itemWrapper = getItemWrapperFromId(itemId, -1);
-        ValueEventListener listener = new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                Item item = dataSnapshot.getValue(Item.class);
-                boolean wasWrapperShowing = itemWrapper.shouldShow();
-                if (item != null && shouldStoreInDb) {
-                    ItemDb.createOrUpdateFromItem(item);
-                }
-                updateAdapterWithNewItem(itemWrapper, item);
-                mLoadingStories.remove(itemWrapper);
-                if (mLoadingStories.isEmpty()) {
-                    setRefreshingState(false);
-                }
-                if (!wasWrapperShowing && mAdapter.getPositionForItemWrapper(itemWrapper) == 0) {
-                    mLayoutManager.smoothScrollToPosition(mRecyclerView, null, 0);
-                }
-            }
-
-            @Override
-            public void onCancelled(FirebaseError firebaseError) {
-            }
-        };
-        Firebase ref = mRef.child("item").child(itemId.toString());
-        ref.addValueEventListener(listener);
-        mValueEventsListeners.add(Pair.create(ref, listener));
-    }
-
 
     @Override
     public void onAttach(Context context) {
@@ -384,24 +193,9 @@ public class StoriesFragment extends Fragment {
     }
 
     @Override
-    public void onPause() {
-        super.onPause();
-        removeEventListeners();
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        reAddEventListeners();
-    }
-
-    @Override
     public void onDestroy() {
         super.onDestroy();
-        destroyEventListeners();
         mAdapter.clear();
-        mItemWrappers.clear();
-        mLoadingStories.clear();
         if (mSwipeContainer != null) {
             mSwipeContainer.setRefreshing(false);
             if (mRefreshingRunnable != null) {

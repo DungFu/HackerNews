@@ -14,13 +14,11 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 
-import com.firebase.client.Firebase;
-import com.fmeyer.hackernews.models.Item;
+import com.fmeyer.hackernews.HackerNewsStoriesQuery.Story;
 import com.fmeyer.hackernews.views.listeners.StoryInteractionListener;
 
 import java.util.HashMap;
 import java.util.Map;
-
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, StoryInteractionListener {
@@ -33,8 +31,6 @@ public class MainActivity extends AppCompatActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        Firebase.setAndroidContext(this);
 
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -162,9 +158,9 @@ public class MainActivity extends AppCompatActivity
         return fragment;
     }
 
-    private void launchUrl(Item item) {
-        if (item != null && item.getUrl() != null) {
-            Uri uri = Uri.parse(item.getUrl());
+    private void launchUrl(Story item) {
+        if (item != null && item.url() != null) {
+            Uri uri = Uri.parse(item.url());
             Intent intent = new Intent(Intent.ACTION_VIEW, uri);
             startActivity(intent);
         } else {
@@ -172,22 +168,22 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    private void launchComments(Item item) {
+    private void launchComments(Story item) {
         if (item != null) {
             Intent intent = new Intent(getBaseContext(), StoryActivity.class);
-            intent.putExtra(Constants.EXTRA_STORY_ITEM, item);
+            intent.putExtra(Constants.EXTRA_STORY_ITEM_ID, item.id());
             startActivity(intent);
         }
     }
 
     @Override
-    public void onStoryInteraction(Item item, STORY_CLICK_INTERACTION_TYPE interactionType) {
+    public void onStoryInteraction(Story story, STORY_CLICK_INTERACTION_TYPE interactionType) {
         switch (interactionType) {
             case URL:
-                launchUrl(item);
+                launchUrl(story);
                 break;
             case COMMENTS:
-                launchComments(item);
+                launchComments(story);
                 break;
             default:
                 Log.d(MainActivity.class.getName(), "Interaction type not valid!");

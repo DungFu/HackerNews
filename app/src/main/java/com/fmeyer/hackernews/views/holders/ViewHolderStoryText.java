@@ -5,12 +5,11 @@ import android.view.View;
 import android.widget.TextView;
 
 import com.fmeyer.hackernews.R;
-import com.fmeyer.hackernews.models.Item;
 
 public class ViewHolderStoryText extends RecyclerView.ViewHolder {
     public final View mView;
     public final TextView mStoryText;
-    public Item mItem;
+    public String itemId;
 
     public ViewHolderStoryText(View view) {
         super(view);

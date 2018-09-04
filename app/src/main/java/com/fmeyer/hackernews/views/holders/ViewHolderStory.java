@@ -6,8 +6,8 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.fmeyer.hackernews.HackerNewsStoriesQuery.Story;
 import com.fmeyer.hackernews.R;
-import com.fmeyer.hackernews.models.Item;
 
 public class ViewHolderStory extends RecyclerView.ViewHolder {
     public final View mView;
@@ -16,7 +16,7 @@ public class ViewHolderStory extends RecyclerView.ViewHolder {
     public final TextView mCommentsView;
     public final TextView mTitleView;
     public final TextView mSubtitleView;
-    public Item mItem;
+    public Story mItem;
 
     public ViewHolderStory(View view) {
         super(view);
